@@ -59,7 +59,7 @@ There are no special cases. If something cannot follow the rules, the thing is r
 - Model names do not use irregular plurals. It is `persons`, not `people`. You are speaking to computers, not writing prose.
 - Names are intentional and self-describing. A method that might do nothing is called `maybe_callback`. A method called `process` is a failure of naming. If you cannot tell what a function does from its name alone, rename it.
 - Functions accept a single struct, not a chain of positional arguments. One optional boolean as a final parameter is the outer limit of tolerance, and even that should make you uncomfortable.
-- In a strongly typed language, `any` does not exist. It is not a shortcut, it is a hole in the contract. Every type is explicit or the code does not merge.
+- In a typed language, escape hatches like `any` or `interface{}` do not exist. They are not shortcuts, they are holes in the contract. Every type is explicit or the code does not merge.
 - Linters and formatters run on hooks. Nothing merges without passing.
 
 Consistency eliminates an entire class of decisions. A junior or an AI agent never has to ask "what's the convention here?" It is always the same.
