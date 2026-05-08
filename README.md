@@ -78,20 +78,20 @@ Separate handlers even when they do the same thing. Debugging is simpler when ca
 
 The frontend maintains two versions of truth: what the server says, and what the user is changing. Everything follows from keeping those cleanly separated.
 
-**The Library Store** holds read-only lists of collections. Each tracked model gets an entry — `posts: []`, `persons: []`, etc. Populated by initial API calls, kept current by the sync mechanism from Principle 3. When an updated record arrives, the library patches its list and checks: is this record currently active? If so, it tells the record store to refresh.
+**Collections live in a list store.** Each tracked model gets an entry, populated by initial API calls and kept current by the sync mechanism from Principle 3. When an updated record arrives, the list patches itself and notifies any active detail view that its data is stale.
 
-**The Record Store** holds the active instance of each major navigable entity. "Navigable" means it owns a URL — `/community/:communityId/person/:personId`. Router middleware watches active IDs and tells the record store to load details. Not every model needs this treatment. Subordinate data (like `person_notes`) can live as a field on the parent's detail struct. The URL defines what gets first-class state management.
+**Active records live in a detail store.** Not every model needs this treatment. Promote a model to first-class state management when it owns a route. Subordinate data can live as a field on the parent's detail struct.
 
-The record store maintains two copies of every active record:
+The detail store maintains two copies of every active record:
 
-- **The stored copy** — `Object.freeze` immutable. The exact state as it exists in the database.
-- **The working copy** — a deep copy, mutable only through store actions. This is what the UI binds to.
+- **The stored copy.** Immutable. The exact state as it exists in the database.
+- **The working copy.** A deep copy, mutable only through store actions. This is what the UI binds to.
 
-Components read via getters, write via store actions. Never mutate directly. You can always diff working state against stored state to see exactly what has changed.
+Components read via getters and write via store actions. Never mutate directly. Diffing the working copy against the stored copy shows exactly what has changed, which is everything you need for dirty-checking, optimistic updates, and undo.
 
-**List structs vs. detail structs.** Every model defines both. List structs are trimmed for tables and grids. Detail structs are complete for editing. The library holds list structs. The record store holds detail structs.
+**List structs and detail structs are different shapes.** Lists are trimmed for tables and grids. Details are complete for editing. The list store holds list structs. The detail store holds detail structs. Defining both at the model level prevents the frontend from over-fetching or improvising shapes.
 
-**Components never make API calls.** All backend communication goes through a centralized API service. Domain services — share, person, community, whatever — sit on top of it, but everything routes through one place. Components are presentation logic only — they read from stores, dispatch actions, and render UI. Every user action that touches the backend is trackable in a single layer.
+**Components never make API calls.** All backend communication routes through a centralized API service, with domain services layered on top. Components are presentation logic only: they read from stores, dispatch actions, and render UI. Every user action that touches the backend is trackable in one place.
 
 ### 7. Test the Boundary, Not the Implementation
 
