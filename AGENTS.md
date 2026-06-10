@@ -21,7 +21,7 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 
 ```
 /plugin marketplace add ddnet-repo/boundary-first-development
-/plugin install bfd@bfd
+/plugin install bfd@ddnet
 ```
 
 "Follow BFD" now works in every project. The skill carries the rules with it; your `CLAUDE.md` is never touched. (No plugins? Copy `skills/bfd/` into `~/.claude/skills/` — same effect.)
