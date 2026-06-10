@@ -30,6 +30,13 @@ Agents do not magically know what BFD is because this repo is public. They follo
 /plugin install bfd@ddnet
 ```
 
+Or from the terminal, for scripts and machine setup:
+
+```sh
+claude plugin marketplace add ddnet-repo/boundary-first-development
+claude plugin install bfd@ddnet
+```
+
 **OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules. Your `AGENTS.md` is never touched, and you are always current:
 
 ```json
