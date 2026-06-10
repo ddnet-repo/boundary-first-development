@@ -1,5 +1,6 @@
 {
   "name": "bfd",
+  "description": "Boundary-First Development — strict contracts, backend authority, enforced consistency. Build systems that don't depend on the skill of the builder.",
   "owner": {
     "name": "Steve Elliott"
   },
