@@ -2,12 +2,7 @@
 
 **Build systems that don't depend on the skill of the builder.**
 
-Boundary-First Development (BFD) is an opinionated architecture philosophy for web applications. Strict contracts, backend authority, enforced consistency — chosen over developer freedom, aesthetic elegance, and pattern purity. What you get in exchange:
-
-- **Predictable delivery.** No crunch, no fires, no hero on the critical path.
-- **Correct output from average input.** A junior, a rotating contractor, or an AI agent reads the contracts and produces correct work. No tribal knowledge, no creative vision to decode.
-- **Everything is replaceable.** Providers, modules, the entire frontend — swap any piece and the system doesn't notice.
-- **Mechanical review.** Does the contract hold? Do the integration tests pass? Ship it.
+Boundary-First Development (BFD) is an opinionated architecture philosophy for web applications. Strict contracts, backend authority, enforced consistency — chosen over developer freedom, aesthetic elegance, and pattern purity.
 
 This document is the why. **[RULES.md](RULES.md) is the law** — numbered, citable, and sized to fit in a context window.
 
@@ -21,9 +16,9 @@ Three files, three jobs:
 - **[RULES.md](RULES.md)** — the law. Twenty-seven numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
 - **[AGENTS.md](AGENTS.md)** — the hookup. How to bind any agent to the rules without touching what you already have.
 
-Agents do not magically know what BFD is because this repo is public. They follow it because the rules are in their context. And BFD is a fixed point: it gets *referenced*, never copied into your instruction files and edited. Your `AGENTS.md` can contain whatever it contains — BFD is still BFD.
+Agents follow BFD when the rules are in their context, not because this repo is public. And BFD is a fixed point: it gets *referenced*, never copied into your instruction files and edited. Your `AGENTS.md` can contain whatever it contains — BFD is still BFD.
 
-**Claude Code** — install the plugin once and "follow BFD" works in every project. Nothing in your repos changes:
+**Claude Code** — install the plugin once; "follow BFD" then works in every project:
 
 ```
 /plugin marketplace add ddnet-repo/boundary-first-development
@@ -37,7 +32,7 @@ claude plugin marketplace add ddnet-repo/boundary-first-development
 claude plugin install bfd@ddnet
 ```
 
-**OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules. Your `AGENTS.md` is never touched, and you are always current:
+**OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules:
 
 ```json
 { "instructions": ["https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md"] }
@@ -45,19 +40,17 @@ claude plugin install bfd@ddnet
 
 **Anything else** that only reads prose files: vendor `RULES.md` read-only and add a one-line pointer to your existing `AGENTS.md`. Details in [AGENTS.md](AGENTS.md).
 
-### Say it once
+### Session scope
 
-**"Follow BFD" activates per session, not per command.** The moment the skill fires, the entire ruleset is in the agent's context and governs everything that follows — every file written, every review, every architectural decision — until the session ends. You do not repeat it. You do not remind it. A fresh session needs the signal again, and the phrase isn't even required to be literal: "boundary-first," or working in a project that declares it follows BFD, fires it too.
+"Follow BFD" activates per session, not per command. Once the skill fires, the ruleset is in the agent's context and governs everything until the session ends. A fresh session needs the signal again, and the phrase doesn't have to be literal — "boundary-first," or working in a project that declares it follows BFD, fires it too.
 
-If you don't want to say it at all, make the signal standing:
+To make the signal standing instead of spoken:
 
-- **A repo that is always BFD:** one line in its `CLAUDE.md` — `This project follows Boundary-First Development — invoke the bfd skill.` Every session in that repo starts governed, message one. That line is yours, in your file, pointing at the fixed point — not a copy of it.
-- **A person who is always BFD:** the same line in `~/.claude/CLAUDE.md`. Every session on the machine starts governed, every project.
-- **OpenCode with the `instructions` URL** is already standing. The rules load with every session. There is no phrase.
+- **A repo that is always BFD:** one line in its `CLAUDE.md` — `This project follows Boundary-First Development — invoke the bfd skill.` Every session in that repo starts governed.
+- **A person who is always BFD:** the same line in `~/.claude/CLAUDE.md` covers every project on the machine.
+- **OpenCode with the `instructions` URL** is already standing — the rules load with every session.
 
-### What you get
-
-Agents don't just review against the rules — they build to them from the first line: contracts before implementation, conventions as they type, and a self-review against the PR checklist before any work is called done. The review comes back clean because the work was never allowed to drift. When a review does find something, it comes back citing rule numbers — "violates BFD-22" — not opinions. Disagreements get settled by the document, not by whoever argues longest.
+A governed session builds to the rules from the first line — contracts before implementation, conventions as it types — and self-reviews against the PR checklist before calling work done. Review findings cite rule IDs.
 
 ---
 
