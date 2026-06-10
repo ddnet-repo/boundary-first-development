@@ -7,6 +7,7 @@ This project follows **Boundary-First Development (BFD)**.
 ## What that means for you
 
 - The phrases **"follow BFD"**, **"I follow BFD"**, and **"boundary-first"** — or the presence of this file — activate the rules for the entire session. They are not advisory.
+- The rules are how you build, not just how you review. Contracts before implementation, conventions as you type, and your own work self-reviewed against the PR checklist before you call it done — so review comes back clean.
 - Cite rule IDs (`BFD-n`) in every review finding and every architectural decision. "Rejected, violates BFD-22" is a complete sentence.
 - If a request would violate a rule, name the rule and offer the compliant path. Do not silently comply. Do not silently refuse.
 - The rules outrank the existing code. If the codebase already violates a rule, flag it — don't replicate it.

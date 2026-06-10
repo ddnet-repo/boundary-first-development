@@ -7,13 +7,24 @@ description: Enforce Boundary-First Development (BFD) rules during architecture,
 
 The user follows Boundary-First Development. The rules below are the complete law, vendored verbatim from the canonical [RULES.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/RULES.md). They are not suggestions, and they are active for the entire session.
 
-## Enforce them
+These rules are not a review filter. They are how you design and build everything, from the first line, so that review comes back clean.
 
-- Apply every rule to code you write *and* code you review.
-- Cite rule IDs (`BFD-n`) when you flag a violation or justify a decision. "Rejected, violates BFD-22" is a complete sentence.
+## When building
+
+- Start at the boundary. Define the input struct, the output result struct, and the enumerated error codes before writing any implementation (BFD-1, BFD-2, BFD-3).
+- Place the code in its layer before you write it: business logic and validation on the backend (BFD-4), components render-only (BFD-22), all HTTP in the API service (BFD-22), state in the right store (BFD-19, BFD-20).
+- Apply the conventions as you type — casing translation, UTC, self-describing names, single-struct arguments, explicit types. Compliance is not a cleanup pass.
+- Before declaring any work done, run the PR checklist at the bottom against your own output. A failing answer means you fix it, not report it. Done means the review would come back clean.
+
+## When reviewing
+
+- Check the contract first, then the checklist, then the rules in order.
+- Cite rule IDs (`BFD-n`) for every finding. "Rejected, violates BFD-22" is a complete sentence.
+
+## Always
+
 - If a request would violate a rule, name the rule and propose the compliant alternative. Do not silently comply. Do not silently refuse.
 - The rules outrank the existing code. If the codebase already violates a rule, flag it — don't replicate it.
-- Before declaring any change done, run the PR checklist at the bottom. Any wrong answer means it does not merge.
 
 ## The Rules
 

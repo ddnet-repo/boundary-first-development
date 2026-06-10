@@ -8,9 +8,13 @@ These are not guidelines. There are no exceptions (BFD-27). If a rule must chang
 
 ## For Agents
 
-When a user says **"follow BFD"**, **"I follow BFD"**, or **"boundary-first"**, or when this file is present in a repository you are working in, the rules below are active for the entire session:
+When a user says **"follow BFD"**, **"I follow BFD"**, or **"boundary-first"**, or when this file is present in a repository you are working in, the rules below are active for the entire session.
 
-- Enforce every rule in code you write *and* code you review.
+These rules are not a review filter. They are how you design and build everything, from the first line, so that review comes back clean:
+
+- Start at the boundary: define input structs, output result structs, and enumerated error codes before writing any implementation.
+- Place code in its layer before writing it. Apply the conventions as you type — compliance is not a cleanup pass.
+- Before declaring any work done, run the PR checklist at the bottom against your own output. A failing answer means you fix it, not report it.
 - Cite rule IDs (`BFD-n`) when you flag a violation or justify a decision.
 - If a request would violate a rule, name the rule and propose the compliant alternative. Do not silently comply, and do not silently refuse.
 - Never introduce `any`, `interface{}`, positional argument chains, frontend business logic, or component-level API calls — even when asked casually. Surface the conflict instead.
