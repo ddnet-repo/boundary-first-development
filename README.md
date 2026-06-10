@@ -2,13 +2,49 @@
 
 **Build systems that don't depend on the skill of the builder.**
 
+Boundary-First Development (BFD) is an opinionated architecture philosophy for web applications. Strict contracts, backend authority, enforced consistency — chosen over developer freedom, aesthetic elegance, and pattern purity. What you get in exchange:
+
+- **Predictable delivery.** No crunch, no fires, no hero on the critical path.
+- **Correct output from average input.** A junior, a rotating contractor, or an AI agent reads the contracts and produces correct work. No tribal knowledge, no creative vision to decode.
+- **Everything is replaceable.** Providers, modules, the entire frontend — swap any piece and the system doesn't notice.
+- **Mechanical review.** Does the contract hold? Do the integration tests pass? Ship it.
+
+This document is the why. **[RULES.md](RULES.md) is the law** — numbered, citable, and sized to fit in a context window.
+
+---
+
+## Using It
+
+Three files, three jobs:
+
+- **README.md** — the why. For humans deciding whether this is how they want to work.
+- **[RULES.md](RULES.md)** — the law. Twenty-seven numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
+- **[AGENTS.md](AGENTS.md)** — the hookup. How to bind any agent to the rules without touching what you already have.
+
+Agents do not magically know what BFD is because this repo is public. They follow it because the rules are in their context. And BFD is a fixed point: it gets *referenced*, never copied into your instruction files and edited. Your `AGENTS.md` can contain whatever it contains — BFD is still BFD.
+
+**Claude Code** — install the plugin once and "follow BFD" works in every project. Nothing in your repos changes:
+
+```
+/plugin marketplace add ddnet-repo/boundary-first-development
+/plugin install bfd@bfd
+```
+
+**OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules. Your `AGENTS.md` is never touched, and you are always current:
+
+```json
+{ "instructions": ["https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md"] }
+```
+
+**Anything else** that only reads prose files: vendor `RULES.md` read-only and add a one-line pointer to your existing `AGENTS.md`. Details in [AGENTS.md](AGENTS.md).
+
+Once wired, telling an agent **"follow BFD"** or **"I follow BFD"** activates the rules for the session. Reviews come back citing rule numbers — "violates BFD-22" — not opinions. Disagreements get settled by the document, not by whoever argues longest.
+
 ---
 
 ## What This Is
 
-Boundary-First Development is an opinionated architecture philosophy for web applications. It prioritizes strict contracts, backend authority, and enforced consistency over developer freedom, aesthetic elegance, or pattern purity.
-
-It was not written by someone who dislikes creativity. It was written by someone who loves hacking things together, making code do things it was never supposed to do, and solving problems in ways that make other engineers uncomfortable. That energy is fantastic for experimentation and side projects.
+This philosophy was not written by someone who dislikes creativity. It was written by someone who loves hacking things together, making code do things it was never supposed to do, and solving problems in ways that make other engineers uncomfortable. That energy is fantastic for experimentation and side projects.
 
 It is terrible for professional delivery.
 
@@ -27,6 +63,8 @@ Save the cleverness for where it matters. Make the system itself as boring as po
 Every module exposes an interface with strict input and output structs. What happens inside the module is nobody's business.
 
 A share module accepts content, a platform slug, and publishing options. It returns a result in a defined struct. Inside, there may be providers for Facebook, Instagram, YouTube — each written by a different person, in a different style, at a different skill level. None of that matters. The contract is the only thing that matters.
+
+Failure is part of the contract. Every boundary returns a result struct — `ok`, `data`, `error` — and errors are enumerated codes, not free text. Exceptions never cross a boundary. An exception escaping a module is not an error-handling style; it is a contract violation.
 
 - **Providers are disposable.** Swap them and the system doesn't notice.
 - **Teams scale without coordination.** Hand someone an interface definition and say "make this work."
@@ -48,17 +86,21 @@ The frontend loads a collection and stores `serverTime`. On subsequent syncs, it
 
 When a backend process saves a record, `updated_at` changes. That record appears in the next sync automatically. No manual event emission. No WebSocket message to forget to send. No pub/sub to configure. The write to the database *is* the notification. The timestamp *is* the event.
 
+Deletes are soft. A hard delete is invisible to sync, and invisible changes are how systems rot. Mark the record deleted and let the timestamp carry the news like any other write.
+
 This pattern is transport-agnostic. Polling is the lowest-friction implementation and represents the worst-case scenario. If the architecture works with polling, it works. SSE and WebSockets only make it better.
 
 ### 4. Consistency Is Non-Negotiable
 
 There are no special cases. If something cannot follow the rules, the thing is redesigned. The rules are not redesigned.
 
+The full set is BFD-11 through BFD-17 in [RULES.md](RULES.md). The flavor:
+
 - The backend uses `snake_case`. The frontend uses `camelCase`. Translation happens at the boundary, always, in both directions.
 - All timestamps are stored and transmitted in UTC. The frontend has a datetime service for display. Communication is UTC with zero exceptions.
 - Model names do not use irregular plurals. It is `persons`, not `people`. You are speaking to computers, not writing prose.
 - Names are intentional and self-describing. A method that might do nothing is called `maybe_callback`. A method called `process` is a failure of naming. If you cannot tell what a function does from its name alone, rename it.
-- Functions accept a single struct, not a chain of positional arguments. One optional boolean as a final parameter is the outer limit of tolerance, and even that should make you uncomfortable.
+- Functions accept a single struct. Not a chain of positional arguments, not a struct plus a trailing boolean. One argument, named fields.
 - In a typed language, escape hatches like `any` or `interface{}` do not exist. They are not shortcuts, they are holes in the contract. Every type is explicit or the code does not merge.
 - Linters and formatters run on hooks. Nothing merges without passing.
 
@@ -88,6 +130,8 @@ The detail store maintains two copies of every active record:
 - **The working copy.** A deep copy, mutable only through store actions. This is what the UI binds to.
 
 Components read via getters and write via store actions. Never mutate directly. Diffing the working copy against the stored copy shows exactly what has changed, which is everything you need for dirty-checking, optimistic updates, and undo.
+
+**Conflicts get resolved by the owner, immediately.** When sync delivers a new server copy of a record the user is editing, the frontend presents the diff — server copy against working copy — and the user chooses which one stays active. The choice is forced. No dismissing, no auto-merge, no silent overwrite. The person who owns the work resolves the conflict at the moment it happens, every time.
 
 **List structs and detail structs are different shapes.** Lists are trimmed for tables and grids. Details are complete for editing. The list store holds list structs. The detail store holds detail structs. Defining both at the model level prevents the frontend from over-fetching or improvising shapes.
 
@@ -123,7 +167,7 @@ Opinions have costs. These are stated, not apologized for.
 
 **The system is rigid on purpose.** Developers who value expressive freedom will find this constraining. That is the point. The constraint is what makes the work boring, and boring is what lets you go home on time.
 
-**This system works as a whole.** Partial adoption reintroduces the problems it is designed to eliminate.
+**This system works as a whole.** Partial adoption reintroduces the problems it is designed to eliminate. Disagree with a rule? Change [RULES.md](RULES.md) and own it. Exceptions granted in code are how the whole system dies.
 
 ---
 
@@ -137,7 +181,7 @@ People who love building things — and learned that the way to keep loving it i
 
 ---
 
-## One Sentence
+## The Point
 
 Make the system boring so the work never has to be exciting.
 

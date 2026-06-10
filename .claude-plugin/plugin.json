@@ -1,0 +1,9 @@
+{
+  "name": "bfd",
+  "description": "Boundary-First Development — strict contracts, backend authority, enforced consistency. Adds the 'bfd' skill so agents load and enforce RULES.md when told to follow BFD.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Steve Elliott"
+  },
+  "homepage": "https://github.com/ddnet-repo/boundary-first-development"
+}

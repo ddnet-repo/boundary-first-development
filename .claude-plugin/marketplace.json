@@ -1,0 +1,13 @@
+{
+  "name": "bfd",
+  "owner": {
+    "name": "Steve Elliott"
+  },
+  "plugins": [
+    {
+      "name": "bfd",
+      "source": "./",
+      "description": "Boundary-First Development — the 27 rules, the glossary, the PR checklist, and the skill that enforces them."
+    }
+  ]
+}
