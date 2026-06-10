@@ -45,7 +45,19 @@ claude plugin install bfd@ddnet
 
 **Anything else** that only reads prose files: vendor `RULES.md` read-only and add a one-line pointer to your existing `AGENTS.md`. Details in [AGENTS.md](AGENTS.md).
 
-Once wired, telling an agent **"follow BFD"** or **"I follow BFD"** activates the rules for the session. Reviews come back citing rule numbers — "violates BFD-22" — not opinions. Disagreements get settled by the document, not by whoever argues longest.
+### Say it once
+
+**"Follow BFD" activates per session, not per command.** The moment the skill fires, the entire ruleset is in the agent's context and governs everything that follows — every file written, every review, every architectural decision — until the session ends. You do not repeat it. You do not remind it. A fresh session needs the signal again, and the phrase isn't even required to be literal: "boundary-first," or working in a project that declares it follows BFD, fires it too.
+
+If you don't want to say it at all, make the signal standing:
+
+- **A repo that is always BFD:** one line in its `CLAUDE.md` — `This project follows Boundary-First Development — invoke the bfd skill.` Every session in that repo starts governed, message one. That line is yours, in your file, pointing at the fixed point — not a copy of it.
+- **A person who is always BFD:** the same line in `~/.claude/CLAUDE.md`. Every session on the machine starts governed, every project.
+- **OpenCode with the `instructions` URL** is already standing. The rules load with every session. There is no phrase.
+
+### What you get
+
+Agents don't just review against the rules — they build to them from the first line: contracts before implementation, conventions as they type, and a self-review against the PR checklist before any work is called done. The review comes back clean because the work was never allowed to drift. When a review does find something, it comes back citing rule numbers — "violates BFD-22" — not opinions. Disagreements get settled by the document, not by whoever argues longest.
 
 ---
 
