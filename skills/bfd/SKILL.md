@@ -56,6 +56,7 @@ These rules are not a review filter. They are how you design and build everythin
 - **BFD-15** — Functions accept a single struct. Not a chain of positional arguments, not a struct plus a trailing boolean. One argument, named fields.
 - **BFD-16** — `any`, `interface{}`, and their cousins do not merge. They are not shortcuts; they are holes in the contract.
 - **BFD-17** — Linters and formatters run on hooks. Nothing merges without passing. Style is not a discussion.
+- **BFD-28** — Multi-word names run from general to specific: the shared part first, the differentiator last. It is `panelSettings` and `panelBilling`, not `settingsPanel` and `billingPanel`; `userSave`, not `saveUser`. Sorted alphabetically, siblings cluster — every file listing, symbol picker, and autocomplete becomes a grouped inventory instead of a shuffle. This applies to everything with a name: components, files, methods, variables, routes.
 
 ### API Surfaces
 

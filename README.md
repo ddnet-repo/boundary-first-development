@@ -13,7 +13,7 @@ This document is the why. **[RULES.md](RULES.md) is the law** — numbered, cita
 Three files, three jobs:
 
 - **README.md** — the why. For humans deciding whether this is how they want to work.
-- **[RULES.md](RULES.md)** — the law. Twenty-seven numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
+- **[RULES.md](RULES.md)** — the law. Twenty-eight numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
 - **[AGENTS.md](AGENTS.md)** — the hookup. How to bind any agent to the rules without touching what you already have.
 
 Agents follow BFD when the rules are in their context, not because this repo is public. And BFD is a fixed point: it gets *referenced*, never copied into your instruction files and edited. Your `AGENTS.md` can contain whatever it contains — BFD is still BFD.
@@ -106,12 +106,13 @@ This pattern is transport-agnostic. Polling is the lowest-friction implementatio
 
 There are no special cases. If something cannot follow the rules, the thing is redesigned. The rules are not redesigned.
 
-The full set is BFD-11 through BFD-17 in [RULES.md](RULES.md). The flavor:
+The full set is in [RULES.md](RULES.md). The flavor:
 
 - The backend uses `snake_case`. The frontend uses `camelCase`. Translation happens at the boundary, always, in both directions.
 - All timestamps are stored and transmitted in UTC. The frontend has a datetime service for display. Communication is UTC with zero exceptions.
 - Model names do not use irregular plurals. It is `persons`, not `people`. You are speaking to computers, not writing prose.
 - Names are intentional and self-describing. A method that might do nothing is called `maybe_callback`. A method called `process` is a failure of naming. If you cannot tell what a function does from its name alone, rename it.
+- Multi-word names run from general to specific, so siblings sort together: `panelSettings` and `panelBilling`, not `settingsPanel` and `billingPanel`. The domain leads, the differentiator follows — for components, files, methods, and variables alike.
 - Functions accept a single struct. Not a chain of positional arguments, not a struct plus a trailing boolean. One argument, named fields.
 - In a typed language, escape hatches like `any` or `interface{}` do not exist. They are not shortcuts, they are holes in the contract. Every type is explicit or the code does not merge.
 - Linters and formatters run on hooks. Nothing merges without passing.
