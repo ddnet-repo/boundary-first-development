@@ -8,7 +8,7 @@
     {
       "name": "bfd",
       "source": "./",
-      "description": "Boundary-First Development — the 27 rules, the glossary, the PR checklist, and the skill that enforces them."
+      "description": "Boundary-First Development — the 28 rules, the glossary, the PR checklist, the conformance tool, and the skill that enforces them."
     }
   ]
 }

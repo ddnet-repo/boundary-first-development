@@ -26,6 +26,15 @@ These rules are not a review filter. They are how you design and build everythin
 - If a request would violate a rule, name the rule and propose the compliant alternative. Do not silently comply. Do not silently refuse.
 - The rules outrank the existing code. If the codebase already violates a rule, flag it — don't replicate it.
 
+## Proving it with `bfd conform`
+
+The wire-level rules are provable, not just followable. The canonical repo ships `bfd conform`, a language-agnostic CLI that deterministically checks the project's OpenAPI contract (static) and its running API (read-only GET probes) and cites a rule ID on every finding. It proves BFD-2, 3, 7, 8, 11, 12, 13, and 18; source-level and design rules remain yours to enforce by hand.
+
+- Before declaring backend or API work done, run it alongside the PR checklist: `bfd conform` from the repo root (auto-discovers `openapi.yaml`, reads optional `bfd.yaml`), plus `--base-url http://localhost:<port>` when the API is running. Treat findings like review findings: fix them, don't report them.
+- If `bfd` is not on PATH, install it (requires Go 1.24+): `go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`. In a Go project, prefer pinning it as a tool dependency: `go get -tool github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`, then `go tool bfd conform`. If the Go toolchain is unavailable, say so and fall back to checking the same rules by hand.
+- Exit 0: the boundary holds. Exit 1: findings. Exit 2: the tool could not run (`--json` for the machine-readable envelope).
+- Full usage and the provable-rule table: [CONFORM.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/CONFORM.md).
+
 ## The Rules
 
 ### Contracts
