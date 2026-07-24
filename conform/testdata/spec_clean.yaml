@@ -1,0 +1,61 @@
+openapi: 3.0.3
+info:
+  title: Persons API
+  version: 1.0.0
+components:
+  securitySchemes:
+    keyPublic:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+  schemas:
+    resultError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [personMissing, inputInvalid]
+        message:
+          type: string
+    personList:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        nameFull:
+          type: string
+paths:
+  /persons:
+    get:
+      security:
+        - keyPublic: []
+      parameters:
+        - name: updatedAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: person list envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/personList'
+                  error:
+                    $ref: '#/components/schemas/resultError'
+                  serverTime:
+                    type: string
+                    format: date-time

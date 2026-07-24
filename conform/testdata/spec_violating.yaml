@@ -1,0 +1,62 @@
+openapi: 3.0.3
+info:
+  title: People API
+  version: 1.0.0
+components:
+  schemas:
+    people:
+      type: object
+      properties:
+        id:
+          type: string
+        created_at:
+          type: string
+paths:
+  /people:
+    get:
+      responses:
+        '200':
+          description: bare list, no envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/people'
+  /orders:
+    get:
+      responses:
+        '200':
+          description: envelope without sync or enums
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        status:
+                          type: string
+                        updatedAt:
+                          type: string
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                  serverTime:
+                    type: string
