@@ -27,12 +27,13 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 
 "Follow BFD" now works in every project. The skill carries the rules with it; your `CLAUDE.md` is never touched. (No plugins? Copy `skills/bfd/` into `~/.claude/skills/` — same effect.)
 
-**OpenCode** — point config at the canonical rules, globally (`~/.config/opencode/opencode.json`) or per project:
+**OpenCode** — point config at the canonical rules and the gates, globally (`~/.config/opencode/opencode.json`) or per project:
 
 ```json
 {
   "instructions": [
-    "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md"
+    "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md",
+    "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/LINT.md"
   ]
 }
 ```
@@ -46,3 +47,27 @@ This project follows Boundary-First Development. RULES.md is the law — cite ru
 ```
 
 The vendored `RULES.md` is read-only. Editing your copy is not adapting BFD; it is leaving it (BFD-27).
+
+## The gates
+
+BFD-17 says linters run on hooks and nothing merges without passing. [LINT.md](LINT.md) ships the law as config presets for the linters you already run; `bfd conform` proves the gate exists. When an agent meets a linted language without its gate, the remedy is the canonical preset — copied, never hand-written:
+
+| Language | Fetch | Save as |
+|---|---|---|
+| Go | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/golangci.yml> | `.golangci.yml` |
+| Python | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/ruff.toml> | `ruff.toml` |
+| TS/JS | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/eslint.config.mjs> | `eslint.config.mjs` |
+
+Wire the gate into whatever hook tooling the repo has — lefthook, pre-commit, husky, CI. In Claude Code you can also make the boundary unskippable at the harness level: a `Stop` hook in the project's `.claude/settings.json` means the agent cannot end its turn with a broken boundary:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bfd conform >&2 || exit 2" }] }
+    ]
+  }
+}
+```
+
+Exit 2 blocks the stop and feeds the findings back to the agent — which then fixes them, because that is what findings are for.

@@ -37,7 +37,10 @@ claude plugin install bfd@ddnet
 **OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules:
 
 ```json
-{ "instructions": ["https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md"] }
+{ "instructions": [
+  "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md",
+  "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/LINT.md"
+] }
 ```
 
 **Anything else** that only reads prose files: vendor `RULES.md` read-only and add a one-line pointer to your existing `AGENTS.md`. Details in [AGENTS.md](AGENTS.md).

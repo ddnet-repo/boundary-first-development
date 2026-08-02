@@ -14,6 +14,8 @@ BFD is the rules, never the tooling. Nothing here is a new linter, a plugin, or 
 
 Presets are floors, not ceilings. Extend them with whatever else your project enforces; the annotated rules are the part `bfd conform` demands.
 
+Remote adoption needs no clone — every preset is fetchable raw: `https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/<file>`.
+
 ## What Each Gate Proves
 
 Every entry names the linter rule doing the work — stock rules only, in every ecosystem.

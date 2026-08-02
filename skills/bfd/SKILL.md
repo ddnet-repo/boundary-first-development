@@ -28,12 +28,27 @@ These rules are not a review filter. They are how you design and build everythin
 
 ## Proving it with `bfd conform`
 
-The wire-level rules are provable, not just followable. The canonical repo ships `bfd conform`, a language-agnostic CLI that deterministically checks the project's OpenAPI contract (static) and its running API (read-only GET probes) and cites a rule ID on every finding. It proves BFD-2, 3, 7, 8, 11, 12, 13, and 18; source-level and design rules remain yours to enforce by hand.
+The wire-level rules are provable, not just followable. The canonical repo ships `bfd conform`, a language-agnostic CLI that deterministically checks the project's OpenAPI contract (static), its running API (read-only GET probes), and its lint gate (config read, never executed), citing a rule ID on every finding. It proves BFD-2, 3, 7, 8, 11, 12, 13, 17, and 18; the lint gates below carry the source-level rules, and design rules remain yours to enforce by hand.
 
 - Before declaring backend or API work done, run it alongside the PR checklist: `bfd conform` from the repo root (auto-discovers `openapi.yaml`, reads optional `bfd.yaml`), plus `--base-url http://localhost:<port>` when the API is running. Treat findings like review findings: fix them, don't report them.
 - If `bfd` is not on PATH, install it (requires Go 1.24+): `go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`. In a Go project, prefer pinning it as a tool dependency: `go get -tool github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`, then `go tool bfd conform`. If the Go toolchain is unavailable, say so and fall back to checking the same rules by hand.
 - Exit 0: the boundary holds. Exit 1: findings. Exit 2: the tool could not run (`--json` for the machine-readable envelope).
 - Full usage and the provable-rule table: [CONFORM.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/CONFORM.md).
+
+## The lint gates (BFD-17)
+
+A linted language without its lint gate is a BFD-17 violation — `bfd conform` finds it by reading manifests (`go.mod`, `pyproject.toml`, `package.json`) and checking the linter config enables the BFD-mapped rules. Canonical presets exist; a BFD-17 finding is resolved by copying the canonical preset, never by hand-writing a config:
+
+| Language | Fetch | Save as |
+|---|---|---|
+| Go | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/golangci.yml> | `.golangci.yml` next to `go.mod` |
+| Python | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/ruff.toml> | `ruff.toml` next to `pyproject.toml` |
+| TS/JS | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/eslint.config.mjs> | `eslint.config.mjs` at the project root |
+
+- Presets are floors, not ceilings: extend them freely, never trim the rule-annotated entries.
+- Run the project's linter before declaring work done — it has the same standing as the test suite. A lint failure is a rule violation with a BFD-n annotation in the config telling you which one.
+- BFD-17 says hooks: when introducing a gate, wire it into whatever hook tooling the project has (lefthook, pre-commit, husky, CI). If none exists, say so and propose one.
+- What the gates deliberately cannot prove (BFD-13 plurals, BFD-28 name ordering, `any` in Go parameters) stays with you. Full table: [LINT.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/LINT.md).
 
 ## The Rules
 
@@ -92,6 +107,8 @@ The wire-level rules are provable, not just followable. The canonical repo ships
 
 - **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change the canonical document and own it. Exceptions granted in code are how the whole system dies.
 
+---
+
 ## Glossary
 
 - **Boundary** — the line where data crosses between modules, layers, or systems. Where contracts live and translation happens.
@@ -104,6 +121,8 @@ The wire-level rules are provable, not just followable. The canonical repo ships
 - **Working copy** — the mutable deep copy the UI binds to, changed only through store actions.
 - **Sync** — the `updatedAfter` mechanism (BFD-7 through BFD-10). The timestamp is the event.
 - **Public API / App API** — the stable, keyed, documented surface vs. the JWT-authed surface that moves with the product (BFD-18).
+
+---
 
 ## The PR Checklist
 

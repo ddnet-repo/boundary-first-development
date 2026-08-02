@@ -77,7 +77,7 @@ These rules are not a review filter. They are how you design and build everythin
 
 ### Meta
 
-- **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change this file and own it. Exceptions granted in code are how the whole system dies.
+- **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change the canonical document and own it. Exceptions granted in code are how the whole system dies.
 
 ---
 
