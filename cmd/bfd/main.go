@@ -7,8 +7,9 @@
 //
 // conform proves the wire-level BFD rules against a project's boundary
 // artifacts — the OpenAPI contract and the running API — without caring what
-// language sits behind them. Exit 0: the boundary holds. Exit 1: findings,
-// each citing its rule. Exit 2: the tool itself could not run.
+// language sits behind them, and proves the lint gate exists (BFD-17) by
+// reading its config, never running it. Exit 0: the boundary holds. Exit 1:
+// findings, each citing its rule. Exit 2: the tool itself could not run.
 package main
 
 import (
@@ -76,6 +77,7 @@ type configConform struct {
 	Spec      string     `yaml:"spec"`
 	BaseURL   string     `yaml:"baseUrl"`
 	Endpoints []string   `yaml:"endpoints"`
+	Languages []string   `yaml:"languages"` // toolchain tier; nil detects, [] disables
 	Auth      configAuth `yaml:"auth"`
 }
 
@@ -93,7 +95,7 @@ func commandConform(args []string) {
 	timeoutFlag := flags.Int("timeout", 10, "seconds per wire request")
 	var endpointFlags endpointList
 	flags.Var(&endpointFlags, "endpoint", "extra GET path to probe (repeatable)")
-	flags.Parse(args)
+	_ = flags.Parse(args) // ExitOnError: a parse failure never returns
 
 	config, configErr := configLoad(*configFlag)
 	if configErr != "" {
@@ -113,13 +115,14 @@ func commandConform(args []string) {
 		AuthHeaderName:  config.Conform.Auth.Header,
 		AuthHeaderValue: os.Getenv(authEnv),
 		TimeoutSeconds:  *timeoutFlag,
+		Languages:       config.Conform.Languages,
 	})
 
 	if *jsonFlag {
 		encoded, _ := json.MarshalIndent(result, "", "  ")
 		fmt.Println(string(encoded))
 	} else {
-		resultPrint(result, specPath, baseURL)
+		resultPrint(resultPrintInput{Result: result, SpecPath: specPath, BaseURL: baseURL})
 	}
 	os.Exit(exitCode(result))
 }
@@ -128,6 +131,7 @@ const configTemplate = `conform:
   # spec: api/openapi.yaml            # default: auto-discovered openapi.yaml
   # baseUrl: http://localhost:8080    # or $BFD_BASE_URL / --base-url
   # endpoints: [/persons]             # extra GET paths beyond spec discovery
+  # languages: [go]                   # toolchain tier; default: detected from manifests, [] disables
   # auth:
   #   header: Authorization
   #   valueEnv: BFD_CONFORM_TOKEN
@@ -216,7 +220,16 @@ func firstNonEmpty(values []string) string {
 	return ""
 }
 
-func resultPrint(result conform.RunResult, specPath string, baseURL string) {
+type resultPrintInput struct {
+	Result   conform.RunResult
+	SpecPath string
+	BaseURL  string
+}
+
+func resultPrint(input resultPrintInput) {
+	result := input.Result
+	specPath := input.SpecPath
+	baseURL := input.BaseURL
 	if !result.Ok {
 		fmt.Fprintf(os.Stderr, "bfd conform: %s (%s)\n", result.Error.Message, result.Error.Code)
 		return

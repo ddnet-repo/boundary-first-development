@@ -10,12 +10,13 @@ This document is the why. **[RULES.md](RULES.md) is the law** — numbered, cita
 
 ## Using It
 
-Four files, four jobs:
+Five files, five jobs:
 
 - **README.md** — the why. For humans deciding whether this is how they want to work.
 - **[RULES.md](RULES.md)** — the law. Twenty-eight numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
 - **[AGENTS.md](AGENTS.md)** — the hookup. How to bind any agent to the rules without touching what you already have.
 - **[CONFORM.md](CONFORM.md)** — the proof. `bfd conform`, a language-agnostic tool that deterministically checks the wire-level rules against a project's OpenAPI contract and running API.
+- **[LINT.md](LINT.md)** — the gates. The source-level rules expressed as config presets for the linters you already run — golangci-lint, ruff, ESLint — and checked for by `bfd conform`. BFD stays the rules; your linter stays your linter.
 
 Agents follow BFD when the rules are in their context, not because this repo is public. And BFD is a fixed point: it gets *referenced*, never copied into your instruction files and edited. Your `AGENTS.md` can contain whatever it contains — BFD is still BFD.
 

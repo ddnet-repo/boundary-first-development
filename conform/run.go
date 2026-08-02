@@ -65,6 +65,17 @@ func Run(input RunInput) RunResult {
 		probed = endpoints
 	}
 
+	rootDir := input.RootDir
+	if rootDir == "" {
+		rootDir = "."
+	}
+	toolchainCheckAll(toolchainCheckInput{
+		RootDir:   rootDir,
+		Languages: input.Languages,
+		Report:    report,
+		Note:      note,
+	})
+
 	sort.SliceStable(findings, func(i, j int) bool {
 		if findings[i].Rule != findings[j].Rule {
 			return ruleNumber(findings[i].Rule) < ruleNumber(findings[j].Rule)

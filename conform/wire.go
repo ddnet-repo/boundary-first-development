@@ -100,7 +100,7 @@ func wireFetch(input wireFetchInput) wireFetchResult {
 	if err != nil {
 		return wireFetchResult{Error: err.Error()}
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, wireBodyLimitBytes))
 	if err != nil {
 		return wireFetchResult{Error: err.Error()}

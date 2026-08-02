@@ -1,0 +1,39 @@
+# Boundary-First Development — the Go gate (BFD-17).
+# https://github.com/ddnet-repo/boundary-first-development — RULES.md is the law;
+# this file is that law in golangci-lint's dialect. Copy it next to your go.mod
+# as .golangci.yml. Extend it freely — the five enabled linters below are the
+# floor `bfd conform` checks for, not a ceiling.
+version: "2"
+
+linters:
+  default: standard # govet, staticcheck, and friends stay on
+  enable:
+    - exhaustive # BFD-3: enumerated codes are handled exhaustively
+    - forbidigo # BFD-12: UTC only; local time is display-layer business
+    - ireturn # BFD-16: an empty-interface return is a hole in the contract
+    - revive # BFD-15: single-struct arguments, no boolean control coupling
+    - tagliatelle # BFD-11: camelCase on the wire, translated at the boundary
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^time\.Local$
+          msg: "BFD-12: timestamps are stored and transmitted in UTC; local time exists only in the display layer"
+    ireturn:
+      reject:
+        - empty # interface{} / any never crosses a boundary
+    revive:
+      rules:
+        - name: flag-parameter # BFD-15: a trailing boolean is not an argument, it is two functions
+        - name: argument-limit # BFD-15: one struct argument; the limit of 2 admits only what Go itself mandates (ctx+input, w+r)
+          arguments: [2]
+    tagliatelle:
+      case:
+        rules:
+          json: camel # BFD-11: json tags speak camelCase
+
+formatters:
+  enable:
+    - gofmt # BFD-17: style is not a discussion

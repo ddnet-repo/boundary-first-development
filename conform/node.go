@@ -121,5 +121,7 @@ func nodeWalk(input nodeWalkInput) {
 			Kind:  nodeScalarKind(node),
 			Value: node.Value,
 		})
+	default:
+		// document and alias indirection was already removed by nodeUnwrap
 	}
 }

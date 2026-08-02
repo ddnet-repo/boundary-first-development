@@ -1,6 +1,6 @@
 # Proving It
 
-Rules that live on the wire can be proven, not just reviewed. This repo ships **`bfd conform`**, a single-binary conformance tool that deterministically checks a project's boundary artifacts — the OpenAPI contract and the running API — with zero knowledge of the language behind them. Go, Rust, or a rewrite next quarter: the tool cannot tell, which is the point (BFD-26).
+Rules that live on the wire can be proven, not just reviewed. This repo ships **`bfd conform`**, a single-binary conformance tool that deterministically checks a project's boundary artifacts — the OpenAPI contract and the running API — with zero knowledge of the language behind them. Go, Rust, or a rewrite next quarter: the tool cannot tell, which is the point (BFD-26). A third tier checks the toolchain: BFD-17 says nothing merges without a lint gate, so conform verifies the gate exists ([LINT.md](LINT.md)) — by reading its config, never by running it.
 
 ## Install
 
@@ -33,6 +33,7 @@ conform:
   spec: api/openapi.yaml
   baseUrl: http://localhost:8080
   endpoints: [/persons, /projects]   # extra GET paths beyond spec discovery
+  languages: [go]                    # toolchain tier; default: detected from manifests, [] disables
   auth:
     header: Authorization            # value read from $BFD_CONFORM_TOKEN
 ```
@@ -54,6 +55,7 @@ Every finding cites its rule ID.
 | BFD-11 | camelCase on the wire, in the spec and in live bodies. |
 | BFD-12 | Timestamps are declared `date-time` and transmitted as UTC. Any RFC3339 value anywhere in a live body with a non-zero offset is a finding. |
 | BFD-13 | Regular plurals in routes, schema names, properties, and live keys. |
+| BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Languages are detected from their manifests; configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). |
 | BFD-18 | The spec declares an apiKey security scheme — the Public API is keyed and documented. The App API may live outside the spec; it moves with the product. |
 
 Exit codes: **0** — the boundary holds. **1** — findings. **2** — the tool itself could not run (enumerated error codes, `--json` shows them).
@@ -66,4 +68,4 @@ Wire checks are read-only GETs, so it is safe anywhere, including CI:
 
 ## What it deliberately does not claim
 
-Rules that live in source — single-struct arguments (BFD-15), no `any` (BFD-16), components never calling APIs (BFD-22) — belong to per-language linters. Design rules — disposability (BFD-26), no special cases (BFD-27) — belong to review. The tool proves what is provable and stays silent about the rest.
+Rules that live in source — single-struct arguments (BFD-15), no `any` (BFD-16), components never calling APIs (BFD-22) — belong to per-language linters, and [LINT.md](LINT.md) ships those linters' configs; conform's toolchain tier proves they are wired, not what they caught. Design rules — disposability (BFD-26), no special cases (BFD-27) — belong to review. The tool proves what is provable and stays silent about the rest.

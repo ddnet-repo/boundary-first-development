@@ -1,0 +1,17 @@
+# Boundary-First Development — the Python gate (BFD-17).
+# https://github.com/ddnet-repo/boundary-first-development — RULES.md is the law;
+# this file is that law in ruff's dialect. Copy it next to your pyproject.toml
+# as ruff.toml, or fold the sections into [tool.ruff.lint]. Extend it freely —
+# this selection is the floor `bfd conform` checks for, not a ceiling.
+
+[lint]
+select = [
+  "ANN",     # BFD-16: every type explicit; ANN401 bans typing.Any outright
+  "DTZ",     # BFD-12: naive datetimes do not exist; UTC or nothing
+  "FBT",     # BFD-15: a boolean positional is not an argument, it is two functions
+  "N",       # BFD-11: snake_case on the backend
+  "PLR0913", # BFD-15: positional chains stop at the gate
+]
+
+[lint.pylint]
+max-args = 1 # BFD-15: functions accept a single struct; self does not count

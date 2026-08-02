@@ -16,7 +16,8 @@ type Finding struct {
 }
 
 // RunInput configures a conformance run. Either SpecPath or BaseURL must be
-// set; setting both runs the static and the wire checks together.
+// set; setting both runs the static and the wire checks together. The
+// toolchain tier runs on every run, against RootDir.
 type RunInput struct {
 	SpecPath        string   `json:"specPath"`       // OpenAPI 3.x document, YAML or JSON
 	BaseURL         string   `json:"baseUrl"`        // a running API to probe with read-only GETs
@@ -24,6 +25,8 @@ type RunInput struct {
 	AuthHeaderName  string   `json:"authHeaderName"` // defaults to "Authorization" when a value is set
 	AuthHeaderValue string   `json:"-"`              // never serialized; secrets do not cross boundaries
 	TimeoutSeconds  int      `json:"timeoutSeconds"` // per wire request; defaults to 10
+	RootDir         string   `json:"rootDir"`        // project root for the toolchain tier; defaults to "."
+	Languages       []string `json:"languages"`      // nil: detect from manifests; []: skip the toolchain tier
 }
 
 // RunError carries an enumerated code for tool-level failures. Findings are

@@ -19,15 +19,20 @@ func rulesOf(result RunResult) map[string]bool {
 	return rules
 }
 
-func requireRules(t *testing.T, result RunResult, expected []string) {
+type requireRulesInput struct {
+	Result RunResult
+	Rules  []string
+}
+
+func requireRules(t *testing.T, input requireRulesInput) {
 	t.Helper()
-	if !result.Ok {
-		t.Fatalf("run failed: %s (%s)", result.Error.Message, result.Error.Code)
+	if !input.Result.Ok {
+		t.Fatalf("run failed: %s (%s)", input.Result.Error.Message, input.Result.Error.Code)
 	}
-	rules := rulesOf(result)
-	for _, rule := range expected {
+	rules := rulesOf(input.Result)
+	for _, rule := range input.Rules {
 		if !rules[rule] {
-			t.Errorf("expected a %s finding, got none; findings: %+v", rule, result.Data.Findings)
+			t.Errorf("expected a %s finding, got none; findings: %+v", rule, input.Result.Data.Findings)
 		}
 	}
 }
@@ -44,7 +49,7 @@ func TestRunSpecClean(t *testing.T) {
 
 func TestRunSpecViolating(t *testing.T) {
 	result := Run(RunInput{SpecPath: "testdata/spec_violating.yaml"})
-	requireRules(t, result, []string{
+	requireRules(t, requireRulesInput{Result: result, Rules: []string{
 		"BFD-2",  // /people response is not the envelope
 		"BFD-3",  // /orders error code has no enum
 		"BFD-7",  // no serverTime on /people; people schema has id without status/updatedAt
@@ -53,7 +58,7 @@ func TestRunSpecViolating(t *testing.T) {
 		"BFD-12", // updatedAt on /orders items lacks format date-time
 		"BFD-13", // route and schema "people"
 		"BFD-18", // no apiKey security scheme
-	})
+	}})
 }
 
 func TestRunSpecMissing(t *testing.T) {
@@ -79,13 +84,13 @@ func serverConforming() *httptest.Server {
 		if r.URL.Query().Get("updatedAfter") != "" {
 			data = `[]`
 		}
-		fmt.Fprintf(w, `{"ok":true,"data":%s,"error":null,"serverTime":%q}`, data, serverTime)
+		_, _ = fmt.Fprintf(w, `{"ok":true,"data":%s,"error":null,"serverTime":%q}`, data, serverTime)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		serverTime := time.Now().UTC().Format(time.RFC3339)
-		fmt.Fprintf(w, `{"ok":false,"data":null,"error":{"code":"routeUnknown","message":"no such route"},"serverTime":%q}`, serverTime)
+		_, _ = fmt.Fprintf(w, `{"ok":false,"data":null,"error":{"code":"routeUnknown","message":"no such route"},"serverTime":%q}`, serverTime)
 	})
 	return httptest.NewServer(mux)
 }
@@ -94,7 +99,7 @@ func serverViolating() *httptest.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/people", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"success":true,"items":[{"id":"1","created_at":"2026-07-24T12:00:00+02:00"}]}`)
+		_, _ = fmt.Fprint(w, `{"success":true,"items":[{"id":"1","created_at":"2026-07-24T12:00:00+02:00"}]}`)
 	})
 	return httptest.NewServer(mux) // unknown routes fall through to Go's plain-text 404
 }
@@ -115,13 +120,13 @@ func TestRunWireViolating(t *testing.T) {
 	server := serverViolating()
 	defer server.Close()
 	result := Run(RunInput{BaseURL: server.URL, Endpoints: []string{"/people"}})
-	requireRules(t, result, []string{
+	requireRules(t, requireRulesInput{Result: result, Rules: []string{
 		"BFD-2",  // no envelope on /people, naked 404 on the probe
 		"BFD-7",  // no serverTime
 		"BFD-11", // created_at key on the wire
 		"BFD-12", // +02:00 timestamp
 		"BFD-13", // route "people"
-	})
+	}})
 }
 
 func TestRunWireUnreachable(t *testing.T) {
