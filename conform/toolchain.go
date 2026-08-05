@@ -17,6 +17,7 @@ import (
 
 type toolchainCheckInput struct {
 	RootDir   string
+	Directory string   // the module being checked, relative to RootDir; "" is the root
 	Languages []string // nil: detect from manifests; empty non-nil: tier disabled
 	Report    func(finding Finding)
 	Note      func(text string)
@@ -41,48 +42,189 @@ func toolchainCheckAll(input toolchainCheckInput) toolchainCheckResult {
 		"python": toolchainCheckPython,
 		"js":     toolchainCheckJs,
 	}
-	languages := input.Languages
-	if languages == nil {
-		languages = toolchainLanguagesDetect(toolchainDetectInput{RootDir: input.RootDir})
+	modules := toolchainModulesFind(toolchainModulesInput{RootDir: input.RootDir})
+	if input.Languages != nil {
+		modules = toolchainModulesPin(toolchainModulesPinInput{
+			Modules:   modules,
+			Languages: input.Languages,
+			Known:     checks,
+			Note:      input.Note,
+		})
 	}
 	checked := []string{}
-	for _, language := range languages {
-		check, known := checks[language]
-		if !known {
-			input.Note(fmt.Sprintf("toolchain: unknown language %q in config — known: %s", language, strings.Join(toolchainLanguageNames, ", ")))
-			continue
+	seen := map[string]bool{}
+	for _, module := range modules {
+		checks[module.Language](toolchainCheckInput{
+			RootDir:   input.RootDir,
+			Directory: module.Directory,
+			Report:    input.Report,
+			Note:      input.Note,
+		})
+		if !seen[module.Language] {
+			seen[module.Language] = true
+			checked = append(checked, module.Language)
 		}
-		check(input)
-		checked = append(checked, language)
 	}
 	return toolchainCheckResult{Checked: checked}
 }
 
-type toolchainDetectInput struct {
+// toolchainModule is one unit of a repository that declares a language by
+// carrying that language's manifest.
+type toolchainModule struct {
+	Directory string // relative to the repo root; "" is the root itself
+	Language  string
+}
+
+type toolchainModulesInput struct {
 	RootDir string
 }
 
-// toolchainLanguagesDetect maps manifest files to languages. A manifest in
-// the root is the whole proof; conform never guesses from source trees.
-func toolchainLanguagesDetect(input toolchainDetectInput) []string {
-	manifests := []struct {
-		Language string
-		Files    []string
-	}{
-		{Language: "go", Files: []string{"go.mod"}},
-		{Language: "python", Files: []string{"pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"}},
-		{Language: "js", Files: []string{"package.json"}},
+// toolchainModuleDepthMax bounds the walk. Four levels reaches the layouts
+// monorepos actually use — apps/web, packages/ui, services/api — without
+// turning the tier into a filesystem crawl.
+const toolchainModuleDepthMax = 4
+
+// toolchainDirectorySkip are directories that hold other people's code or
+// build output. Dot-directories are skipped by name.
+var toolchainDirectorySkip = map[string]bool{
+	"node_modules": true, "vendor": true, "dist": true, "build": true,
+	"target": true, "venv": true, "__pycache__": true, "testdata": true,
+}
+
+var toolchainManifests = []struct {
+	Language string
+	Files    []string
+}{
+	{Language: "go", Files: []string{"go.mod"}},
+	{Language: "python", Files: []string{"pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"}},
+	{Language: "js", Files: []string{"package.json"}},
+}
+
+// toolchainModulesFind walks the tree for manifests. A manifest is a module
+// declaring that it exists — conform still never guesses from source trees,
+// and a monorepo's frontends declare themselves exactly as its backend does,
+// which is why looking only at the repo root was never right.
+func toolchainModulesFind(input toolchainModulesInput) []toolchainModule {
+	modules := []toolchainModule{}
+	var walk func(directory string, depth int)
+	walk = func(directory string, depth int) {
+		base := filepath.Join(input.RootDir, directory)
+		for _, manifest := range toolchainManifests {
+			for _, file := range manifest.Files {
+				if toolchainFileExists(toolchainFileInput{RootDir: base, Name: file}) {
+					modules = append(modules, toolchainModule{Directory: directory, Language: manifest.Language})
+					break
+				}
+			}
+		}
+		if depth >= toolchainModuleDepthMax {
+			return
+		}
+		entries, err := os.ReadDir(base)
+		if err != nil {
+			return
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if !entry.IsDir() || strings.HasPrefix(name, ".") || toolchainDirectorySkip[name] {
+				continue
+			}
+			walk(filepath.Join(directory, name), depth+1)
+		}
 	}
-	detected := []string{}
-	for _, manifest := range manifests {
-		for _, file := range manifest.Files {
-			if toolchainFileExists(toolchainFileInput{RootDir: input.RootDir, Name: file}) {
-				detected = append(detected, manifest.Language)
-				break
+	walk("", 0)
+	return modules
+}
+
+type toolchainModulesPinInput struct {
+	Modules   []toolchainModule
+	Languages []string
+	Known     map[string]func(toolchainCheckInput)
+	Note      func(text string)
+}
+
+// toolchainModulesPin applies an explicit languages list: it keeps only the
+// named languages, and for a named language with no manifest anywhere it
+// still checks the root — declaring "this is a Go project" is a claim conform
+// honours even when the manifest is somewhere it cannot see.
+func toolchainModulesPin(input toolchainModulesPinInput) []toolchainModule {
+	pinned := []toolchainModule{}
+	for _, language := range input.Languages {
+		if _, known := input.Known[language]; !known {
+			input.Note(fmt.Sprintf("toolchain: unknown language %q in config — known: %s", language, strings.Join(toolchainLanguageNames, ", ")))
+			continue
+		}
+		found := false
+		for _, module := range input.Modules {
+			if module.Language == language {
+				pinned = append(pinned, module)
+				found = true
+			}
+		}
+		if !found {
+			pinned = append(pinned, toolchainModule{Language: language})
+		}
+	}
+	return pinned
+}
+
+// toolchainAncestors lists a module's own directory and every ancestor up to
+// the repo root, nearest first — the order every linter resolves its config
+// in. One config at the top of a workspace covers the packages beneath it.
+func toolchainAncestors(directory string) []string {
+	directory = filepath.Clean(directory)
+	if directory == "." || directory == string(filepath.Separator) {
+		return []string{""}
+	}
+	chain := []string{}
+	for {
+		chain = append(chain, directory)
+		parent := filepath.Dir(directory)
+		if parent == "." || parent == directory {
+			break
+		}
+		directory = parent
+	}
+	return append(chain, "")
+}
+
+type toolchainConfigInput struct {
+	RootDir    string
+	Directory  string
+	Candidates []string
+}
+
+// toolchainConfigFind returns the nearest matching config, as a path relative
+// to the repo root, or "" when no ancestor carries one.
+func toolchainConfigFind(input toolchainConfigInput) string {
+	for _, directory := range toolchainAncestors(input.Directory) {
+		base := filepath.Join(input.RootDir, directory)
+		for _, candidate := range input.Candidates {
+			if toolchainFileExists(toolchainFileInput{RootDir: base, Name: candidate}) {
+				return filepath.Join(directory, candidate)
 			}
 		}
 	}
-	return detected
+	return ""
+}
+
+type toolchainWhereInput struct {
+	Language  string
+	Directory string
+	Config    string
+}
+
+// toolchainWhere labels a finding with the module it belongs to, so a
+// monorepo's findings say which package is missing its gate.
+func toolchainWhere(input toolchainWhereInput) string {
+	where := "toolchain: " + input.Language
+	if input.Directory != "" {
+		where += " in " + input.Directory
+	}
+	if input.Config != "" {
+		where += " (" + input.Config + ")"
+	}
+	return where
 }
 
 type toolchainFileInput struct {
@@ -93,21 +235,6 @@ type toolchainFileInput struct {
 func toolchainFileExists(input toolchainFileInput) bool {
 	info, err := os.Stat(filepath.Join(input.RootDir, input.Name))
 	return err == nil && !info.IsDir()
-}
-
-type toolchainFindInput struct {
-	RootDir    string
-	Candidates []string
-}
-
-// toolchainFileFind returns the first existing candidate, or "".
-func toolchainFileFind(input toolchainFindInput) string {
-	for _, candidate := range input.Candidates {
-		if toolchainFileExists(toolchainFileInput{RootDir: input.RootDir, Name: candidate}) {
-			return candidate
-		}
-	}
-	return ""
 }
 
 // --- go ---
@@ -138,16 +265,16 @@ type toolchainGolangciLinters struct {
 
 func toolchainCheckGo(input toolchainCheckInput) {
 	candidates := []string{".golangci.yml", ".golangci.yaml", ".golangci.json", ".golangci.toml"}
-	found := toolchainFileFind(toolchainFindInput{RootDir: input.RootDir, Candidates: candidates})
+	found := toolchainConfigFind(toolchainConfigInput{RootDir: input.RootDir, Directory: input.Directory, Candidates: candidates})
 	if found == "" {
 		input.Report(Finding{
 			Rule:    "BFD-17",
-			Where:   "toolchain: go",
+			Where:   toolchainWhere(toolchainWhereInput{Language: "go", Directory: input.Directory}),
 			Message: "no golangci-lint config found — linters run on hooks, nothing merges without passing",
 		})
 		return
 	}
-	where := "toolchain: go (" + found + ")"
+	where := toolchainWhere(toolchainWhereInput{Language: "go", Directory: input.Directory, Config: found})
 	raw, err := os.ReadFile(filepath.Join(input.RootDir, found))
 	if err != nil {
 		input.Note(fmt.Sprintf("toolchain: %s exists but could not be read (%v) — presence is all this run proves", found, err))
@@ -221,6 +348,44 @@ type toolchainRuffConfig struct {
 	Lint         toolchainRuffLint   `toml:"lint"`
 }
 
+type toolchainRuffLocated struct {
+	Path   string              // root-relative path of the config that governs this module
+	Config toolchainRuffConfig // its parsed contents
+	Parsed string              // a note, when a file was found but could not be read
+}
+
+// toolchainRuffLocate walks from the module up to the repo root the way ruff
+// itself resolves configuration: at each level a ruff.toml wins, otherwise a
+// pyproject.toml that actually declares [tool.ruff]. A pyproject without that
+// table is not a ruff config, so the search keeps climbing.
+func toolchainRuffLocate(input toolchainCheckInput) toolchainRuffLocated {
+	for _, directory := range toolchainAncestors(input.Directory) {
+		base := filepath.Join(input.RootDir, directory)
+		for _, name := range []string{"ruff.toml", ".ruff.toml"} {
+			if !toolchainFileExists(toolchainFileInput{RootDir: base, Name: name}) {
+				continue
+			}
+			var config toolchainRuffConfig
+			if _, err := toml.DecodeFile(filepath.Join(base, name), &config); err != nil {
+				return toolchainRuffLocated{Parsed: fmt.Sprintf("toolchain: %s does not parse (%v) — presence is all this run proves", filepath.Join(directory, name), err)}
+			}
+			return toolchainRuffLocated{Path: filepath.Join(directory, name), Config: config}
+		}
+		if !toolchainFileExists(toolchainFileInput{RootDir: base, Name: "pyproject.toml"}) {
+			continue
+		}
+		var pyproject toolchainPyprojectFile
+		meta, err := toml.DecodeFile(filepath.Join(base, "pyproject.toml"), &pyproject)
+		if err != nil {
+			return toolchainRuffLocated{Parsed: fmt.Sprintf("toolchain: %s does not parse (%v) — presence is all this run proves", filepath.Join(directory, "pyproject.toml"), err)}
+		}
+		if meta.IsDefined("tool", "ruff") {
+			return toolchainRuffLocated{Path: filepath.Join(directory, "pyproject.toml"), Config: pyproject.Tool.Ruff}
+		}
+	}
+	return toolchainRuffLocated{}
+}
+
 type toolchainPyprojectFile struct {
 	Tool toolchainPyprojectTool `toml:"tool"`
 }
@@ -230,41 +395,23 @@ type toolchainPyprojectTool struct {
 }
 
 func toolchainCheckPython(input toolchainCheckInput) {
-	found := toolchainFileFind(toolchainFindInput{RootDir: input.RootDir, Candidates: []string{"ruff.toml", ".ruff.toml"}})
-	var config toolchainRuffConfig
-	if found != "" {
-		if _, err := toml.DecodeFile(filepath.Join(input.RootDir, found), &config); err != nil {
-			input.Note(fmt.Sprintf("toolchain: %s does not parse (%v) — presence is all this run proves", found, err))
-			return
-		}
-	} else if toolchainFileExists(toolchainFileInput{RootDir: input.RootDir, Name: "pyproject.toml"}) {
-		var pyproject toolchainPyprojectFile
-		meta, err := toml.DecodeFile(filepath.Join(input.RootDir, "pyproject.toml"), &pyproject)
-		if err != nil {
-			input.Note(fmt.Sprintf("toolchain: pyproject.toml does not parse (%v) — presence is all this run proves", err))
-			return
-		}
-		if !meta.IsDefined("tool", "ruff") {
-			input.Report(Finding{
-				Rule:    "BFD-17",
-				Where:   "toolchain: python",
-				Message: "no ruff config found (ruff.toml, .ruff.toml, or [tool.ruff] in pyproject.toml) — linters run on hooks, nothing merges without passing",
-			})
-			return
-		}
-		found = "pyproject.toml"
-		config = pyproject.Tool.Ruff
-	} else {
+	located := toolchainRuffLocate(input)
+	if located.Parsed != "" {
+		input.Note(located.Parsed)
+		return
+	}
+	if located.Path == "" {
 		input.Report(Finding{
 			Rule:    "BFD-17",
-			Where:   "toolchain: python",
+			Where:   toolchainWhere(toolchainWhereInput{Language: "python", Directory: input.Directory}),
 			Message: "no ruff config found (ruff.toml, .ruff.toml, or [tool.ruff] in pyproject.toml) — linters run on hooks, nothing merges without passing",
 		})
 		return
 	}
+	config := located.Config
 	selectors := append(append(append(append([]string{},
 		config.Select...), config.ExtendSelect...), config.Lint.Select...), config.Lint.ExtendSelect...)
-	where := "toolchain: python (" + found + ")"
+	where := toolchainWhere(toolchainWhereInput{Language: "python", Directory: input.Directory, Config: located.Path})
 	for _, required := range toolchainRuffRequired {
 		if !toolchainSelectorCovered(toolchainSelectorInput{Selectors: selectors, Required: required.Selector}) {
 			input.Report(Finding{
@@ -346,20 +493,32 @@ func toolchainCheckJs(input toolchainCheckInput) {
 		"eslint.config.ts", "eslint.config.mts", "eslint.config.cts",
 		".eslintrc.js", ".eslintrc.cjs", ".eslintrc.json", ".eslintrc.yml", ".eslintrc.yaml",
 	}
-	found := toolchainFileFind(toolchainFindInput{RootDir: input.RootDir, Candidates: candidates})
-	if found == "" && toolchainFileExists(toolchainFileInput{RootDir: input.RootDir, Name: "package.json"}) {
-		raw, err := os.ReadFile(filepath.Join(input.RootDir, "package.json"))
-		if err == nil {
-			var pkg toolchainPackageFile
-			if yaml.Unmarshal(raw, &pkg) == nil && pkg.EslintConfig != nil {
-				found = "package.json"
+	found := ""
+	for _, directory := range toolchainAncestors(input.Directory) {
+		base := filepath.Join(input.RootDir, directory)
+		for _, candidate := range candidates {
+			if toolchainFileExists(toolchainFileInput{RootDir: base, Name: candidate}) {
+				found = filepath.Join(directory, candidate)
+				break
 			}
+		}
+		if found == "" && toolchainFileExists(toolchainFileInput{RootDir: base, Name: "package.json"}) {
+			raw, err := os.ReadFile(filepath.Join(base, "package.json"))
+			if err == nil {
+				var pkg toolchainPackageFile
+				if yaml.Unmarshal(raw, &pkg) == nil && pkg.EslintConfig != nil {
+					found = filepath.Join(directory, "package.json")
+				}
+			}
+		}
+		if found != "" {
+			break
 		}
 	}
 	if found == "" {
 		input.Report(Finding{
 			Rule:    "BFD-17",
-			Where:   "toolchain: js",
+			Where:   toolchainWhere(toolchainWhereInput{Language: "js", Directory: input.Directory}),
 			Message: "no eslint config found — linters run on hooks, nothing merges without passing",
 		})
 		return

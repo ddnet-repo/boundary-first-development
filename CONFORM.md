@@ -58,7 +58,7 @@ Every finding cites its rule ID.
 | BFD-11 | camelCase on the wire, in the spec and in live bodies. |
 | BFD-12 | Timestamps are declared `date-time` and transmitted as UTC. Any RFC3339 value anywhere in a live body with a non-zero offset is a finding. |
 | BFD-13 | Regular plurals in routes, schema names, properties, and live keys. |
-| BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Languages are detected from their manifests; configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). |
+| BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Every module is found by its manifest — including a monorepo's frontends and nested services — and its config resolved upward the way linters resolve it. Configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). |
 | BFD-18 | The spec declares an apiKey security scheme — the Public API is keyed and documented. The App API may live outside the spec; it moves with the product. |
 | BFD-29 | The lint gate bans the artifacts of deferred work — markers, suppressions, swallowed exceptions, commented-out code. The deferred-*capability* half of the rule is not lintable and stays with review; [LINT.md](LINT.md) says so plainly. |
 

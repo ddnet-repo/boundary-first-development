@@ -49,7 +49,9 @@ BFD-17 says linters run on hooks and nothing merges without passing — so `bfd 
 - **Python** — a `ruff.toml`, `.ruff.toml`, or `[tool.ruff]` in `pyproject.toml` must exist and select `ANN401`, `DTZ`, `ERA`, `FBT`, `FIX`, `N`, `PGH`, `PLR0913`, and `S110` (by group, by code, or `ALL`).
 - **TS/JS** — an ESLint config must exist. Flat configs are executable JavaScript, so presence is what the tier proves; the content stays with review.
 
-A missing or insufficient gate is a full finding citing BFD-17, exit 1 — not a warning. Conform has findings and clean, nothing in between. Monorepos and polyglot repos can pin or disable the tier in `bfd.yaml`:
+**Monorepos need no configuration.** A manifest anywhere in the tree declares a module, so `ui-client/package.json` and `services/api/go.mod` are found and checked exactly like a manifest at the root. Config resolution then climbs from each module toward the repo root, the same upward search the linters themselves perform — a frontend with its own `eslint.config.mjs` is covered by it, and a workspace with one config at the top covers every package beneath it. Findings name the module that lacks a gate (`toolchain: js in ui-admin`). The walk goes four levels deep and skips `node_modules`, `vendor`, `dist`, `build`, `target`, and dot-directories.
+
+A missing or insufficient gate is a full finding citing BFD-17, exit 1 — not a warning. Conform has findings and clean, nothing in between. Polyglot repos can still pin or disable the tier in `bfd.yaml`:
 
 ```yaml
 conform:

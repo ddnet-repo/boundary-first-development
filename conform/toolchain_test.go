@@ -3,6 +3,7 @@ package conform
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -13,7 +14,11 @@ func projectWrite(t *testing.T, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
 	for name, content := range files {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o644); err != nil {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("cannot create directory for %s: %v", name, err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			t.Fatalf("cannot write %s: %v", name, err)
 		}
 	}
@@ -49,6 +54,12 @@ const golangciConforming = `version: "2"
 linters:
   default: none
   enable: [exhaustive, forbidigo, godox, ireturn, nolintlint, revive, tagliatelle]
+`
+
+const ruffConforming = `[lint]
+select = ["ALL"]
+[lint.flake8-bandit]
+check-typed-exception = true
 `
 
 // The toolchain tier is the one tier a project can fail without owning an API
@@ -168,4 +179,84 @@ func TestRunToolchainUnknownLanguage(t *testing.T) {
 	if len(result.Data.Notes) == 0 {
 		t.Errorf("expected a note about the unknown language, got none")
 	}
+}
+
+// --- monorepos ---
+//
+// A manifest anywhere in the tree declares a module, and config resolution
+// climbs from that module to the repo root the way the linters themselves
+// resolve. Looking only at the repo root reported a missing gate for every
+// frontend that kept its config where frontends keep it.
+
+func TestRunToolchainMonorepoFrontendsCarryTheirOwnGate(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"go.mod":                      "module example.test\n",
+		".golangci.yml":               golangciConforming,
+		"ui-client/package.json":      "{\"name\": \"client\"}\n",
+		"ui-client/eslint.config.mjs": "export default [];\n",
+		"ui-admin/package.json":       "{\"name\": \"admin\"}\n",
+		"ui-admin/eslint.config.mjs":  "export default [];\n",
+	})
+	result := runToolchain(t, runToolchainInput{Root: root})
+	requireFindingCount(t, requireCountInput{Result: result, Count: 0})
+}
+
+func TestRunToolchainMonorepoNamesTheUngatedPackage(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"go.mod":                      "module example.test\n",
+		".golangci.yml":               golangciConforming,
+		"ui-client/package.json":      "{\"name\": \"client\"}\n",
+		"ui-client/eslint.config.mjs": "export default [];\n",
+		"ui-admin/package.json":       "{\"name\": \"admin\"}\n", // no gate
+	})
+	result := runToolchain(t, runToolchainInput{Root: root})
+	requireFindingCount(t, requireCountInput{Result: result, Count: 1})
+	if where := result.Data.Findings[0].Where; !strings.Contains(where, "ui-admin") {
+		t.Errorf("the finding must name the package that lacks the gate, got %q", where)
+	}
+}
+
+// One config at the top of a workspace covers the packages beneath it, which
+// is how ESLint itself resolves — so this must not report three findings.
+func TestRunToolchainMonorepoRootConfigCoversPackages(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"package.json":              "{\"name\": \"workspace\"}\n",
+		"eslint.config.mjs":         "export default [];\n",
+		"packages/ui/package.json":  "{\"name\": \"ui\"}\n",
+		"packages/api/package.json": "{\"name\": \"api\"}\n",
+	})
+	requireFindingCount(t, requireCountInput{Result: runToolchain(t, runToolchainInput{Root: root}), Count: 0})
+}
+
+func TestRunToolchainMonorepoNestedGoService(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"services/api/go.mod": "module example.test/api\n",
+	})
+	result := runToolchain(t, runToolchainInput{Root: root})
+	requireFindingCount(t, requireCountInput{Result: result, Count: 1})
+	if where := result.Data.Findings[0].Where; !strings.Contains(where, "services/api") {
+		t.Errorf("expected the nested service named, got %q", where)
+	}
+}
+
+// node_modules carries thousands of package.json files. None of them are ours.
+func TestRunToolchainSkipsVendoredTrees(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"package.json":                       "{\"name\": \"app\"}\n",
+		"eslint.config.mjs":                  "export default [];\n",
+		"node_modules/left-pad/package.json": "{\"name\": \"left-pad\"}\n",
+		"vendor/github.com/x/y/go.mod":       "module x/y\n",
+	})
+	requireFindingCount(t, requireCountInput{Result: runToolchain(t, runToolchainInput{Root: root}), Count: 0})
+}
+
+// A python package under a monorepo resolves ruff from the root, and a
+// pyproject.toml without [tool.ruff] is not a ruff config — the search climbs
+// past it rather than stopping.
+func TestRunToolchainMonorepoRuffResolvesUpward(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"ruff.toml":                      ruffConforming,
+		"services/worker/pyproject.toml": "[project]\nname = \"worker\"\n",
+	})
+	requireFindingCount(t, requireCountInput{Result: runToolchain(t, runToolchainInput{Root: root}), Count: 0})
 }
