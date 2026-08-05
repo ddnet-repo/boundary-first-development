@@ -10,6 +10,14 @@ Once, globally (Go 1.24+):
 go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest
 ```
 
+`go install` writes to `$(go env GOPATH)/bin`, which is **not on `PATH` by default** on most Linux setups — the install then succeeds and `bfd` is still "command not found". Put it on `PATH` once:
+
+```sh
+export PATH="$(go env GOPATH)/bin:$PATH"   # add to ~/.bashrc or ~/.zshrc
+```
+
+`bfd update` checks this for you afterwards, and says so when PATH will not find what it just installed or when an older copy shadows it.
+
 Or sideloaded as a versioned dependency of a Go project, pinned in `go.mod` like anything else:
 
 ```sh

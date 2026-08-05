@@ -192,7 +192,7 @@ func commandUpdate() {
 		fmt.Fprintf(os.Stderr, "bfd: update failed: %v\n", err)
 		os.Exit(2)
 	}
-	fmt.Println(`updated — "bfd version" shows the result`)
+	installReport(installReportInput{GoBinary: goBinary})
 	fmt.Println(`note: if bfd is a go.mod tool dependency, update that project with: go get -tool ` + moduleInstallTarget)
 }
 

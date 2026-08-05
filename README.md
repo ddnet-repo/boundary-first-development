@@ -49,6 +49,7 @@ claude plugin install bfd@ddnet
 
 ```sh
 go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest
+export PATH="$(go env GOPATH)/bin:$PATH"   # go install's target is rarely on PATH already
 bfd conform --base-url http://localhost:8080
 ```
 
