@@ -7,9 +7,10 @@
 //
 // conform proves the wire-level BFD rules against a project's boundary
 // artifacts — the OpenAPI contract and the running API — without caring what
-// language sits behind them, and proves the lint gate exists (BFD-17) by
-// reading its config, never running it. Exit 0: the boundary holds. Exit 1:
-// findings, each citing its rule. Exit 2: the tool itself could not run.
+// language sits behind them, and proves the lint gate exists (BFD-17, BFD-29)
+// by reading its config, never running it. The gate is checked on every run,
+// spec or no spec. Exit 0: the boundary holds. Exit 1: findings, each citing
+// its rule. Exit 2: the tool itself could not run.
 package main
 
 import (
@@ -19,7 +20,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"runtime/debug"
+	"strings"
+	"time"
 
 	"github.com/ddnet-repo/boundary-first-development/conform"
 	"gopkg.in/yaml.v3"
@@ -55,7 +57,7 @@ func usagePrint() {
 
   bfd conform [flags]   prove the wire-level rules against the spec and the running API
   bfd init              write a starter bfd.yaml (never overwrites an existing one)
-  bfd version           print the installed version
+  bfd version           print the installed version and the law it carries
   bfd update            reinstall the latest version via the Go toolchain
   bfd help              print this
 
@@ -66,6 +68,9 @@ conform flags:
   --endpoint /path  extra GET path to probe (repeatable)
   --timeout n       seconds per wire request (default: 10)
   --json            emit the result envelope as JSON
+
+bfd checks for a newer release once a day and says so. A checker running
+behind the law it claims to enforce is not a preference (BFD-27).
 `)
 }
 
@@ -78,6 +83,7 @@ type configConform struct {
 	BaseURL   string     `yaml:"baseUrl"`
 	Endpoints []string   `yaml:"endpoints"`
 	Languages []string   `yaml:"languages"` // toolchain tier; nil detects, [] disables
+	Requires  []string   `yaml:"requires"`  // rules this project demands its bfd can check
 	Auth      configAuth `yaml:"auth"`
 }
 
@@ -116,6 +122,7 @@ func commandConform(args []string) {
 		AuthHeaderValue: os.Getenv(authEnv),
 		TimeoutSeconds:  *timeoutFlag,
 		Languages:       config.Conform.Languages,
+		RulesRequired:   config.Conform.Requires,
 	})
 
 	if *jsonFlag {
@@ -123,6 +130,12 @@ func commandConform(args []string) {
 		fmt.Println(string(encoded))
 	} else {
 		resultPrint(resultPrintInput{Result: result, SpecPath: specPath, BaseURL: baseURL})
+		if versionInteractive() {
+			if notice := versionNoticeFind(versionNoticeInput{Installed: versionInstalled(), Now: time.Now()}); notice != "" {
+				fmt.Println()
+				fmt.Println(notice)
+			}
+		}
 	}
 	os.Exit(exitCode(result))
 }
@@ -135,6 +148,11 @@ const configTemplate = `conform:
   # auth:
   #   header: Authorization
   #   valueEnv: BFD_CONFORM_TOKEN
+
+  # The law this project expects its checker to carry. A bfd too old to check
+  # a listed rule exits 2 instead of reporting a clean run it cannot vouch for.
+  # "bfd conform" prints the full list it knows under "law:".
+  requires: [BFD-29]
 `
 
 func commandInit() {
@@ -150,11 +168,14 @@ func commandInit() {
 }
 
 func commandVersion() {
-	version := "devel"
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		version = info.Main.Version
-	}
+	version := versionInstalled()
 	fmt.Printf("bfd %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("law: %s\n", strings.Join(conform.RulesProven, ", "))
+	if notice := versionNoticeFind(versionNoticeInput{Installed: version, Force: true, Now: time.Now()}); notice != "" {
+		fmt.Println(notice)
+	} else if version != "devel" {
+		fmt.Println("up to date")
+	}
 }
 
 func commandUpdate() {
@@ -241,6 +262,10 @@ func resultPrint(input resultPrintInput) {
 	if baseURL != "" {
 		fmt.Printf("  wire: %s (%d endpoints + unknown-route probe)\n", baseURL, len(result.Data.Endpoints))
 	}
+	if len(result.Data.Languages) > 0 {
+		fmt.Printf("  gate: %s\n", strings.Join(result.Data.Languages, ", "))
+	}
+	fmt.Printf("  law:  %s\n", strings.Join(result.Data.Rules, ", "))
 	fmt.Println()
 	for _, finding := range result.Data.Findings {
 		fmt.Printf("  %-8s %s — %s\n", finding.Rule, finding.Where, finding.Message)

@@ -1,6 +1,7 @@
 package conform
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,10 +11,10 @@ import (
 // tier against the running API, or both. Findings are observations, not
 // errors — a run that proves violations still returns Ok true.
 func Run(input RunInput) RunResult {
-	if input.SpecPath == "" && input.BaseURL == "" {
+	if stale := rulesStaleFind(rulesStaleInput{Required: input.RulesRequired}); len(stale) > 0 {
 		return RunResult{Error: RunError{
-			Code:    ErrorCodeInputEmpty,
-			Message: "nothing to check: provide a spec path, a base URL, or both",
+			Code:    ErrorCodeRulesStale,
+			Message: fmt.Sprintf("this build of conform cannot check %s — the project requires law it does not carry; run \"bfd update\"", quoteJoin(stale)),
 		}}
 	}
 	findings := []Finding{}
@@ -69,12 +70,18 @@ func Run(input RunInput) RunResult {
 	if rootDir == "" {
 		rootDir = "."
 	}
-	toolchainCheckAll(toolchainCheckInput{
+	toolchain := toolchainCheckAll(toolchainCheckInput{
 		RootDir:   rootDir,
 		Languages: input.Languages,
 		Report:    report,
 		Note:      note,
 	})
+	if input.SpecPath == "" && input.BaseURL == "" && len(toolchain.Checked) == 0 {
+		return RunResult{Error: RunError{
+			Code:    ErrorCodeInputEmpty,
+			Message: "nothing to check: no spec, no base URL, and no linted language detected here",
+		}}
+	}
 
 	sort.SliceStable(findings, func(i, j int) bool {
 		if findings[i].Rule != findings[j].Rule {
@@ -82,7 +89,34 @@ func Run(input RunInput) RunResult {
 		}
 		return findings[i].Where < findings[j].Where
 	})
-	return RunResult{Ok: true, Data: RunData{Findings: findings, Endpoints: probed, Notes: notes}}
+	return RunResult{Ok: true, Data: RunData{
+		Findings:  findings,
+		Endpoints: probed,
+		Languages: toolchain.Checked,
+		Rules:     RulesProven,
+		Notes:     notes,
+	}}
+}
+
+type rulesStaleInput struct {
+	Required []string
+}
+
+// rulesStaleFind returns the required rules this build cannot check. A stale
+// checker that stays silent is worse than no checker: it reports success.
+func rulesStaleFind(input rulesStaleInput) []string {
+	proven := map[string]bool{}
+	for _, rule := range RulesProven {
+		proven[rule] = true
+	}
+	stale := []string{}
+	for _, required := range input.Required {
+		normalized := strings.ToUpper(strings.TrimSpace(required))
+		if normalized != "" && !proven[normalized] {
+			stale = append(stale, normalized)
+		}
+	}
+	return stale
 }
 
 // quoteJoin renders a name list for humans: `"ok", "data", "error"`.

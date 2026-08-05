@@ -13,7 +13,7 @@ This document is the why. **[RULES.md](RULES.md) is the law** — numbered, cita
 Five files, five jobs:
 
 - **README.md** — the why. For humans deciding whether this is how they want to work.
-- **[RULES.md](RULES.md)** — the law. Twenty-eight numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
+- **[RULES.md](RULES.md)** — the law. Twenty-nine numbered rules, a glossary, and the PR checklist. Built to be loaded into an agent's context or a junior's head, whole.
 - **[AGENTS.md](AGENTS.md)** — the hookup. How to bind any agent to the rules without touching what you already have.
 - **[CONFORM.md](CONFORM.md)** — the proof. `bfd conform`, a language-agnostic tool that deterministically checks the wire-level rules against a project's OpenAPI contract and running API.
 - **[LINT.md](LINT.md)** — the gates. The source-level rules expressed as config presets for the linters you already run — golangci-lint, ruff, ESLint — and checked for by `bfd conform`. BFD stays the rules; your linter stays your linter.
@@ -130,6 +130,7 @@ The full set is in [RULES.md](RULES.md). The flavor:
 - Functions accept a single struct. Not a chain of positional arguments, not a struct plus a trailing boolean. One argument, named fields.
 - In a typed language, escape hatches like `any` or `interface{}` do not exist. They are not shortcuts, they are holes in the contract. Every type is explicit or the code does not merge.
 - Linters and formatters run on hooks. Nothing merges without passing.
+- Nothing ships provisionally. No stubs, no `TODO`, no suppressions, no skipped tests, and no capability — least of all authentication — deferred to a phase that never arrives.
 
 Consistency eliminates an entire class of decisions. A junior or an AI agent never has to ask "what's the convention here?" It is always the same.
 
@@ -177,6 +178,18 @@ Internals can be refactored freely. If the integration tests pass, ship it. CI/C
 Providers are swappable. Frontends are disposable. Modules are isolated. Any piece of this system can be rewritten, replaced, or deleted without the rest noticing.
 
 Design every component as if someone will throw it away next quarter. If that thought makes you nervous, the boundaries aren't clean enough.
+
+### 9. Correct Is the Fast Path
+
+Nothing ships provisionally. Every capability a thing needs is built when the thing is built — authentication is not a later phase, and neither are authorization, soft deletes, enumerated codes, the sync fields, or the tests. "We'll add it when we need it" is not a schedule decision. It is a decision to ship a known defect and hope nobody finds it first.
+
+The shortcut was always a bet: that the hours saved now exceed the hours lost later. For a person typing every character, that bet was at least arguable, and it still usually lost — the deferred work came back as an incident, a migration, or a breach, and it came back at the worst possible time. It is not arguable any more. A system that can produce the correct version in the same sitting as the shortcut isn't saving anything by choosing the shortcut. There is no trade left to make. There is just the loss, scheduled for later.
+
+None of which means every job is small. Some of them are enormous, and the answer to an enormous job is never a smaller version of it with the hard parts missing. It is either a more direct approach that is still complete, or the same job cut along its boundaries into contracted units and built one at a time, each one whole and each one shippable. That is what the contracts in Principle 1 are *for*. Scope shrinks; completeness never does.
+
+In code, the rule shows up as absences: no stubs returning invented data, no `TODO`, no suppressions, no skipped tests, no swallowed exceptions, no commented-out code — because each of those is a note explaining that the work is not finished, filed in the one place nobody reads.
+
+BFD-27 forbids exempting a thing from the rules. BFD-29 forbids exempting a moment.
 
 ---
 

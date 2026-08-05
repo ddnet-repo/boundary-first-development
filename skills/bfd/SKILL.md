@@ -14,6 +14,7 @@ These rules are not a review filter. They are how you design and build everythin
 - Start at the boundary. Define the input struct, the output result struct, and the enumerated error codes before writing any implementation (BFD-1, BFD-2, BFD-3).
 - Place the code in its layer before you write it: business logic and validation on the backend (BFD-4), components render-only (BFD-22), all HTTP in the API service (BFD-22), state in the right store (BFD-19, BFD-20).
 - Apply the conventions as you type — casing translation, UTC, self-describing names, single-struct arguments, explicit types. Compliance is not a cleanup pass.
+- Build it completely the first time (BFD-29). Never offer the shortcut: no "good enough for now", no stub returning invented data, no `TODO`, no suppression, no skipped test, no capability — least of all authentication — deferred to a later phase. When the correct build is big, shrink it along its boundaries, not along its completeness: offer a more direct approach that is still whole, or split it into contracted units and land them one at a time. Typing speed is not your constraint, so the shortcut saves you nothing and costs the project weeks.
 - Before declaring any work done, run the PR checklist at the bottom against your own output. A failing answer means you fix it, not report it. Done means the review would come back clean.
 
 ## When reviewing
@@ -106,6 +107,7 @@ A linted language without its lint gate is a BFD-17 violation — `bfd conform` 
 ### Meta
 
 - **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change the canonical document and own it. Exceptions granted in code are how the whole system dies.
+- **BFD-29** — Nothing ships provisionally. Every capability a thing needs is built when the thing is built: authentication is not a later phase, and neither are authorization, soft deletes, enumerated codes, the sync fields, or the tests. "We will add it when we need it" is a decision to ship a known defect and hope. In code this means no stubs returning invented data, no `TODO`/`FIXME`/`HACK`, no lint suppressions, no skipped tests, no swallowed exceptions, no commented-out code. When correct is big, it does not get smaller by being done badly — it gets smaller by being cut along its boundaries. Offer the more direct approach that is still complete, or split the work into contracted units (BFD-1) and land them one at a time, each whole. Scope shrinks; completeness never does. Building it correctly is the fast path — the second pass is the expensive one.
 
 ---
 

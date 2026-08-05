@@ -68,6 +68,26 @@ func TestRunSpecMissing(t *testing.T) {
 	}
 }
 
+// A checker asked for law it does not carry must refuse the run. Reporting a
+// clean boundary it was never able to inspect is the one failure a gate must
+// not have.
+func TestRunRulesStale(t *testing.T) {
+	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", RulesRequired: []string{"BFD-99"}})
+	if result.Ok || result.Error.Code != ErrorCodeRulesStale {
+		t.Errorf("expected %s, got %+v", ErrorCodeRulesStale, result)
+	}
+}
+
+func TestRunRulesCarried(t *testing.T) {
+	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", RulesRequired: []string{"BFD-29", "bfd-2"}})
+	if !result.Ok {
+		t.Fatalf("expected the run to proceed, got error %+v", result.Error)
+	}
+	if len(result.Data.Rules) == 0 {
+		t.Error("a completed run must report the law it carried")
+	}
+}
+
 func TestRunInputEmpty(t *testing.T) {
 	result := Run(RunInput{})
 	if result.Ok || result.Error.Code != ErrorCodeInputEmpty {

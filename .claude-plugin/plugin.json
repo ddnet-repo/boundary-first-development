@@ -1,7 +1,7 @@
 {
   "name": "bfd",
   "description": "Boundary-First Development — strict contracts, backend authority, enforced consistency. Adds the 'bfd' skill so agents load and enforce RULES.md when told to follow BFD, run the 'bfd conform' tool to prove the wire-level rules, and plant the canonical lint gates (BFD-17).",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "author": {
     "name": "Steve Elliott"
   },

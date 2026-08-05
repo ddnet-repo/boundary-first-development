@@ -8,6 +8,18 @@
 // codes. Exceptions do not cross it.
 package conform
 
+// RulesProven names the BFD rules this build of conform knows how to check.
+// It is the answer to "what law is this binary carrying?" — a question an
+// installed tool must be able to answer, because a checker that has fallen
+// behind the law reports a clean run it is not entitled to report.
+//
+// Add a rule here in the same change that teaches conform to check it, and
+// add its row to CONFORM.md. parity_test.go proves the two agree.
+var RulesProven = []string{
+	"BFD-2", "BFD-3", "BFD-7", "BFD-8", "BFD-11",
+	"BFD-12", "BFD-13", "BFD-17", "BFD-18", "BFD-29",
+}
+
 // Finding is one observed violation of a BFD rule.
 type Finding struct {
 	Rule    string `json:"rule"`    // the rule id, e.g. "BFD-11"
@@ -15,9 +27,10 @@ type Finding struct {
 	Message string `json:"message"` // for humans; the rule id is the contract
 }
 
-// RunInput configures a conformance run. Either SpecPath or BaseURL must be
-// set; setting both runs the static and the wire checks together. The
-// toolchain tier runs on every run, against RootDir.
+// RunInput configures a conformance run. SpecPath runs the static checks,
+// BaseURL the wire checks, and setting both runs them together. The toolchain
+// tier runs on every run, against RootDir — so a project with neither a spec
+// nor a running API still has its lint gate proven.
 type RunInput struct {
 	SpecPath        string   `json:"specPath"`       // OpenAPI 3.x document, YAML or JSON
 	BaseURL         string   `json:"baseUrl"`        // a running API to probe with read-only GETs
@@ -27,6 +40,7 @@ type RunInput struct {
 	TimeoutSeconds  int      `json:"timeoutSeconds"` // per wire request; defaults to 10
 	RootDir         string   `json:"rootDir"`        // project root for the toolchain tier; defaults to "."
 	Languages       []string `json:"languages"`      // nil: detect from manifests; []: skip the toolchain tier
+	RulesRequired   []string `json:"rulesRequired"`  // rules the project demands; a build without them refuses to run
 }
 
 // RunError carries an enumerated code for tool-level failures. Findings are
@@ -40,6 +54,8 @@ type RunError struct {
 type RunData struct {
 	Findings  []Finding `json:"findings"`  // sorted by rule, then location
 	Endpoints []string  `json:"endpoints"` // wire paths actually probed
+	Languages []string  `json:"languages"` // toolchain gates actually examined
+	Rules     []string  `json:"rules"`     // the law this build carries; see RulesProven
 	Notes     []string  `json:"notes"`     // checks skipped or degraded, stated plainly
 }
 
@@ -52,8 +68,9 @@ type RunResult struct {
 
 // Enumerated error codes for RunError.Code.
 const (
-	ErrorCodeInputEmpty      = "input_empty"      // neither a spec nor a base URL was given
+	ErrorCodeInputEmpty      = "input_empty"      // no spec, no base URL, and no linted language to check
 	ErrorCodeSpecUnreadable  = "spec_unreadable"  // the spec file could not be read
 	ErrorCodeSpecInvalid     = "spec_invalid"     // the spec file is not a YAML/JSON mapping
 	ErrorCodeWireUnreachable = "wire_unreachable" // no wire request got any response at all
+	ErrorCodeRulesStale      = "rules_stale"      // the project requires rules this build cannot check
 )

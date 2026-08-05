@@ -63,9 +63,12 @@ func TestParityRuffPresetCoversRequired(t *testing.T) {
 	}
 	selectors := append(append([]string{}, config.Lint.Select...), config.Lint.ExtendSelect...)
 	for _, required := range toolchainRuffRequired {
-		if !toolchainSelectorCovered(selectors, required.Selector) {
+		if !toolchainSelectorCovered(toolchainSelectorInput{Selectors: selectors, Required: required.Selector}) {
 			t.Errorf("conform requires ruff selector %q but the preset does not cover it — update lint/ruff.toml and LINT.md together", required.Selector)
 		}
+	}
+	if !config.Lint.Bandit.CheckTypedException {
+		t.Error("lint/ruff.toml does not set flake8-bandit check-typed-exception — S110/S112 would ignore \"except SomeError: pass\", which BFD-29 does not")
 	}
 }
 
@@ -80,6 +83,32 @@ func TestParitySkillVendorsTheLaw(t *testing.T) {
 	law := strings.TrimSpace(rules[start:])
 	if !strings.Contains(skill, law) {
 		t.Error("skills/bfd/SKILL.md does not vendor RULES.md verbatim from \"## The Rules\" onward — re-vendor the law and bump the plugin version")
+	}
+}
+
+// TestParityProvenRulesMatchConform pins the law this build claims to carry
+// against the table CONFORM.md publishes. Teaching conform a new rule without
+// documenting it — or documenting one it cannot check — fails here.
+func TestParityProvenRulesMatchConform(t *testing.T) {
+	documented := map[string]bool{}
+	for _, line := range strings.Split(string(repoRead(t, "CONFORM.md")), "\n") {
+		if !strings.HasPrefix(line, "| BFD-") {
+			continue
+		}
+		columns := strings.Split(line, "|")
+		documented[strings.TrimSpace(columns[1])] = true
+	}
+	proven := map[string]bool{}
+	for _, rule := range RulesProven {
+		proven[rule] = true
+		if !documented[rule] {
+			t.Errorf("RulesProven claims %s but CONFORM.md has no row for it — the table is the published promise", rule)
+		}
+	}
+	for rule := range documented {
+		if !proven[rule] {
+			t.Errorf("CONFORM.md documents %s but RulesProven omits it — a project requiring it would be told this build is stale", rule)
+		}
 	}
 }
 

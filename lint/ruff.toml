@@ -8,10 +8,20 @@
 select = [
   "ANN",     # BFD-16: every type explicit; ANN401 bans typing.Any outright
   "DTZ",     # BFD-12: naive datetimes do not exist; UTC or nothing
+  "ERA",     # BFD-29: commented-out code is not a note, it is unshipped work
   "FBT",     # BFD-15: a boolean positional is not an argument, it is two functions
+  "FIX",     # BFD-29: TODO, FIXME, HACK, XXX — deferred work does not ship
   "N",       # BFD-11: snake_case on the backend
+  "PGH",     # BFD-29: blanket noqa and type: ignore are holes of unknown size
   "PLR0913", # BFD-15: positional chains stop at the gate
+  "S110",    # BFD-29: a swallowed exception is a failure nobody will ever see
+  "S112",    # BFD-29: nor is one that continues the loop instead
 ]
 
 [lint.pylint]
 max-args = 1 # BFD-15: functions accept a single struct; self does not count
+
+[lint.flake8-bandit]
+# BFD-29: without this, S110/S112 only catch bare `except:` and `except Exception:`.
+# `except KeyError: pass` swallows a failure just as completely.
+check-typed-exception = true

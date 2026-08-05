@@ -18,6 +18,7 @@ These rules are not a review filter. They are how you design and build everythin
 - Cite rule IDs (`BFD-n`) when you flag a violation or justify a decision.
 - If a request would violate a rule, name the rule and propose the compliant alternative. Do not silently comply, and do not silently refuse.
 - Never introduce `any`, `interface{}`, positional argument chains, frontend business logic, or component-level API calls — even when asked casually. Surface the conflict instead.
+- Never propose the easy way around a problem. No "good enough for now", no stub to fill in later, no capability deferred to a phase that never arrives (BFD-29). When the correct build is big, offer a more direct approach that is still complete, or decompose it into contracted units and build them one at a time — never a smaller version of the same thing with the hard parts missing. You are not constrained by typing speed, so the shortcut buys you nothing and costs the project weeks.
 - When the codebase and the rules disagree, the rules win. Flag the existing violation; don't replicate it.
 
 ---
@@ -78,6 +79,7 @@ These rules are not a review filter. They are how you design and build everythin
 ### Meta
 
 - **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change the canonical document and own it. Exceptions granted in code are how the whole system dies.
+- **BFD-29** — Nothing ships provisionally. Every capability a thing needs is built when the thing is built: authentication is not a later phase, and neither are authorization, soft deletes, enumerated codes, the sync fields, or the tests. "We will add it when we need it" is a decision to ship a known defect and hope. In code this means no stubs returning invented data, no `TODO`/`FIXME`/`HACK`, no lint suppressions, no skipped tests, no swallowed exceptions, no commented-out code. When correct is big, it does not get smaller by being done badly — it gets smaller by being cut along its boundaries. Offer the more direct approach that is still complete, or split the work into contracted units (BFD-1) and land them one at a time, each whole. Scope shrinks; completeness never does. Building it correctly is the fast path — the second pass is the expensive one.
 
 ---
 

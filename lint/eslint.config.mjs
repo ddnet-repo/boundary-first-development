@@ -17,6 +17,19 @@ export default defineConfig(
       // BFD-15: functions accept a single struct — one argument, named fields
       'max-params': ['error', { max: 1 }],
 
+      // BFD-29: nothing ships provisionally — no markers, no swallowed
+      // failures, no suppressions standing in for work not done
+      'no-warning-comments': [
+        'error',
+        { terms: ['todo', 'fixme', 'hack', 'xxx'], location: 'anywhere' },
+      ],
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        // A described suppression is still a suppression (BFD-27).
+        { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
+      ],
+
       // BFD-11: camelCase on the frontend; translation happens at the boundary
       '@typescript-eslint/naming-convention': [
         'error',

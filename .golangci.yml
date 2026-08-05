@@ -10,12 +10,16 @@ linters:
   enable:
     - exhaustive # BFD-3: enumerated codes are handled exhaustively
     - forbidigo # BFD-12: UTC only; local time is display-layer business
+    - godox # BFD-29: a marker is deferred work, and deferred work does not ship
     - ireturn # BFD-16: an empty-interface return is a hole in the contract
+    - nolintlint # BFD-29: suppressions are exceptions, and there are no exceptions
     - revive # BFD-15: single-struct arguments, no boolean control coupling
     - tagliatelle # BFD-11: camelCase on the wire, translated at the boundary
   settings:
     exhaustive:
       default-signifies-exhaustive: true
+    godox:
+      keywords: [TODO, FIXME, HACK, XXX, BUG, OPTIMIZE]
     forbidigo:
       analyze-types: true
       forbid:
@@ -24,6 +28,10 @@ linters:
     ireturn:
       reject:
         - empty # interface{} / any never crosses a boundary
+    nolintlint:
+      allow-unused: false # BFD-29: a suppression guarding nothing is dead weight
+      require-explanation: true # if it must exist, it must be defended in writing
+      require-specific: true # a blanket nolint is a hole of unknown size
     revive:
       rules:
         - name: flag-parameter # BFD-15: a trailing boolean is not an argument, it is two functions

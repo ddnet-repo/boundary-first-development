@@ -28,12 +28,15 @@ Every entry names the linter rule doing the work — stock rules only, in every 
 | BFD-15 | `revive` `argument-limit` (2: one struct plus what Go mandates) and `flag-parameter` | `PLR0913` at `max-args = 1` (`self` is free) and `FBT` | `max-params` at 1 |
 | BFD-16 | `ireturn` — no empty-interface returns | `ANN` — every type explicit; `ANN401` bans `typing.Any` | `no-explicit-any` |
 | BFD-22 | — | — | `no-restricted-globals` / `no-restricted-imports` — HTTP lives in the API service, nowhere else |
+| BFD-29 | `godox` — no deferral markers; `nolintlint` — suppressions specific, explained, and never unused | `FIX` — markers; `ERA` — commented-out code; `PGH` — blanket `noqa` / `type: ignore`; `S110` — swallowed exceptions | `no-warning-comments` — markers; `no-empty` — swallowed catches; `ban-ts-comment` — suppressions |
 
 The ESLint fence points at `**/services/api/**` by default; point the glob at your API service.
 
 ## What It Deliberately Does Not Claim
 
 - No stock Go linter bans `any` in parameters or struct fields — `ireturn` holds the return side of BFD-16 and review holds the rest. That is a gap in the ecosystem, stated plainly, not papered over with a custom analyzer.
+- No stock Go linter forbids `//nolint` outright, so BFD-29's suppression clause is enforced as far as `nolintlint` reaches: every directive must be specific, explained, and actually suppressing something. A defended suppression is still a suppression, and review still rejects it.
+- BFD-29's deferred-capability clause — shipping an API before its authentication — is not a lint finding in any ecosystem. Linters see the code that exists, never the code someone decided to write later. That half of the rule belongs to the governed agent and to review.
 - BFD-13 (regular plurals) and BFD-28 (general-to-specific naming) have no stock rules in any ecosystem. They stay with the governed agent and with review — where `bfd conform` already proves BFD-13 on everything that crosses the wire.
 - The gates prove what stock rules can prove and stay silent about the rest. No custom lint plugins will be written: becoming the tooling is how the rules stop being the point.
 
@@ -41,8 +44,8 @@ The ESLint fence points at `**/services/api/**` by default; point the glob at yo
 
 BFD-17 says linters run on hooks and nothing merges without passing — so `bfd conform` proves the gate exists. The toolchain tier detects languages from their manifests (`go.mod`; `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements.txt`; `package.json`) and reads the linter configuration, never executing anything:
 
-- **Go** — a `.golangci.yml|yaml|toml|json` must exist and enable the five linters above (`default: all` also passes).
-- **Python** — a `ruff.toml`, `.ruff.toml`, or `[tool.ruff]` in `pyproject.toml` must exist and select `ANN401`, `DTZ`, `FBT`, `N`, and `PLR0913` (by group, by code, or `ALL`).
+- **Go** — a `.golangci.yml|yaml|toml|json` must exist and enable the seven linters above (`default: all` also passes).
+- **Python** — a `ruff.toml`, `.ruff.toml`, or `[tool.ruff]` in `pyproject.toml` must exist and select `ANN401`, `DTZ`, `ERA`, `FBT`, `FIX`, `N`, `PGH`, `PLR0913`, and `S110` (by group, by code, or `ALL`).
 - **TS/JS** — an ESLint config must exist. Flat configs are executable JavaScript, so presence is what the tier proves; the content stays with review.
 
 A missing or insufficient gate is a full finding citing BFD-17, exit 1 — not a warning. Conform has findings and clean, nothing in between. Monorepos and polyglot repos can pin or disable the tier in `bfd.yaml`:

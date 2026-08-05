@@ -25,30 +25,37 @@ type toolchainCheckInput struct {
 // toolchainLanguageNames are the languages the tier knows how to check.
 var toolchainLanguageNames = []string{"go", "python", "js"}
 
-func toolchainCheckAll(input toolchainCheckInput) {
+// toolchainCheckResult names the languages whose gate was actually examined.
+// A run that checked nothing at all is a run with nothing to say, and Run
+// needs to know the difference.
+type toolchainCheckResult struct {
+	Checked []string
+}
+
+func toolchainCheckAll(input toolchainCheckInput) toolchainCheckResult {
 	if input.Languages != nil && len(input.Languages) == 0 {
-		return // explicitly disabled: languages: []
+		return toolchainCheckResult{} // explicitly disabled: languages: []
 	}
 	checks := map[string]func(toolchainCheckInput){
 		"go":     toolchainCheckGo,
 		"python": toolchainCheckPython,
 		"js":     toolchainCheckJs,
 	}
-	if input.Languages == nil {
-		detected := toolchainLanguagesDetect(toolchainDetectInput{RootDir: input.RootDir})
-		for _, language := range detected {
-			checks[language](input)
-		}
-		return
+	languages := input.Languages
+	if languages == nil {
+		languages = toolchainLanguagesDetect(toolchainDetectInput{RootDir: input.RootDir})
 	}
-	for _, language := range input.Languages {
+	checked := []string{}
+	for _, language := range languages {
 		check, known := checks[language]
 		if !known {
 			input.Note(fmt.Sprintf("toolchain: unknown language %q in config — known: %s", language, strings.Join(toolchainLanguageNames, ", ")))
 			continue
 		}
 		check(input)
+		checked = append(checked, language)
 	}
+	return toolchainCheckResult{Checked: checked}
 }
 
 type toolchainDetectInput struct {
@@ -113,7 +120,9 @@ var toolchainGolangciRequired = []struct {
 }{
 	{Linter: "exhaustive", Proves: "BFD-3"},
 	{Linter: "forbidigo", Proves: "BFD-12"},
+	{Linter: "godox", Proves: "BFD-29"},
 	{Linter: "ireturn", Proves: "BFD-16"},
+	{Linter: "nolintlint", Proves: "BFD-29"},
 	{Linter: "revive", Proves: "BFD-15"},
 	{Linter: "tagliatelle", Proves: "BFD-11"},
 }
@@ -182,20 +191,34 @@ var toolchainRuffRequired = []struct {
 }{
 	{Selector: "ANN401", Proves: "BFD-16"},
 	{Selector: "DTZ", Proves: "BFD-12"},
+	{Selector: "ERA", Proves: "BFD-29"},
 	{Selector: "FBT", Proves: "BFD-15"},
+	{Selector: "FIX", Proves: "BFD-29"},
 	{Selector: "N", Proves: "BFD-11"},
+	{Selector: "PGH", Proves: "BFD-29"},
 	{Selector: "PLR0913", Proves: "BFD-15"},
+	{Selector: "S110", Proves: "BFD-29"},
+	{Selector: "S112", Proves: "BFD-29"},
 }
 
 type toolchainRuffLint struct {
-	Select       []string `toml:"select"`
-	ExtendSelect []string `toml:"extend-select"`
+	Select       []string            `toml:"select"`
+	ExtendSelect []string            `toml:"extend-select"`
+	Bandit       toolchainRuffBandit `toml:"flake8-bandit"`
+}
+
+// toolchainRuffBandit carries the one bandit setting BFD-29 depends on. Left
+// at its default, S110 and S112 ignore `except KeyError: pass` — a swallowed
+// failure the rule does not distinguish from any other.
+type toolchainRuffBandit struct {
+	CheckTypedException bool `toml:"check-typed-exception"`
 }
 
 type toolchainRuffConfig struct {
-	Select       []string          `toml:"select"` // pre-lint-section layout, still read
-	ExtendSelect []string          `toml:"extend-select"`
-	Lint         toolchainRuffLint `toml:"lint"`
+	Select       []string            `toml:"select"` // pre-lint-section layout, still read
+	ExtendSelect []string            `toml:"extend-select"`
+	Bandit       toolchainRuffBandit `toml:"flake8-bandit"`
+	Lint         toolchainRuffLint   `toml:"lint"`
 }
 
 type toolchainPyprojectFile struct {
@@ -243,13 +266,20 @@ func toolchainCheckPython(input toolchainCheckInput) {
 		config.Select...), config.ExtendSelect...), config.Lint.Select...), config.Lint.ExtendSelect...)
 	where := "toolchain: python (" + found + ")"
 	for _, required := range toolchainRuffRequired {
-		if !toolchainSelectorCovered(selectors, required.Selector) {
+		if !toolchainSelectorCovered(toolchainSelectorInput{Selectors: selectors, Required: required.Selector}) {
 			input.Report(Finding{
 				Rule:    "BFD-17",
 				Where:   where,
 				Message: fmt.Sprintf("ruff selection does not cover %q — it proves %s; the gate must enforce the rules (see LINT.md)", required.Selector, required.Proves),
 			})
 		}
+	}
+	if !config.Bandit.CheckTypedException && !config.Lint.Bandit.CheckTypedException {
+		input.Report(Finding{
+			Rule:    "BFD-17",
+			Where:   where,
+			Message: `flake8-bandit "check-typed-exception" is not true — without it S110/S112 ignore "except SomeError: pass", and BFD-29 does not (see LINT.md)`,
+		})
 	}
 }
 
@@ -265,9 +295,9 @@ var toolchainSelectorGroups = map[string][]string{
 // selector covers its member prefixes; otherwise the letter prefixes must
 // match exactly and one code must be a prefix of the other ("ANN" covers
 // "ANN401"; a lone "FBT001" still counts toward "FBT").
-func toolchainSelectorCovered(selectors []string, required string) bool {
-	requiredLetters := toolchainSelectorLetters(required)
-	for _, selector := range selectors {
+func toolchainSelectorCovered(input toolchainSelectorInput) bool {
+	requiredLetters := toolchainSelectorLetters(input.Required)
+	for _, selector := range input.Selectors {
 		if selector == "ALL" {
 			return true
 		}
@@ -279,11 +309,16 @@ func toolchainSelectorCovered(selectors []string, required string) bool {
 		if toolchainSelectorLetters(selector) != requiredLetters {
 			continue
 		}
-		if strings.HasPrefix(required, selector) || strings.HasPrefix(selector, required) {
+		if strings.HasPrefix(input.Required, selector) || strings.HasPrefix(selector, input.Required) {
 			return true
 		}
 	}
 	return false
+}
+
+type toolchainSelectorInput struct {
+	Selectors []string
+	Required  string
 }
 
 func toolchainSelectorLetters(selector string) string {

@@ -22,9 +22,11 @@ go tool bfd conform
 From the repo root. Zero configuration is the default:
 
 ```sh
-bfd conform                                    # static: auto-discovers openapi.yaml
+bfd conform                                    # toolchain + static: auto-discovers openapi.yaml
 bfd conform --base-url http://localhost:8080   # + live: probes the wire, read-only
 ```
+
+The toolchain tier runs on every invocation, so a project with no spec and no running API still has its lint gate proven. Only a project with none of the three — no spec, no base URL, no linted language — has nothing to check.
 
 The spec is auto-discovered as `openapi.yaml|yml|json` in the root, `api/`, `docs/`, `spec/`, or `openapi/`. An optional `bfd.yaml` makes the invocation standing:
 
@@ -34,6 +36,7 @@ conform:
   baseUrl: http://localhost:8080
   endpoints: [/persons, /projects]   # extra GET paths beyond spec discovery
   languages: [go]                    # toolchain tier; default: detected from manifests, [] disables
+  requires: [BFD-29]                 # refuse to run on a bfd too old to check these
   auth:
     header: Authorization            # value read from $BFD_CONFORM_TOKEN
 ```
@@ -57,8 +60,40 @@ Every finding cites its rule ID.
 | BFD-13 | Regular plurals in routes, schema names, properties, and live keys. |
 | BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Languages are detected from their manifests; configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). |
 | BFD-18 | The spec declares an apiKey security scheme — the Public API is keyed and documented. The App API may live outside the spec; it moves with the product. |
+| BFD-29 | The lint gate bans the artifacts of deferred work — markers, suppressions, swallowed exceptions, commented-out code. The deferred-*capability* half of the rule is not lintable and stays with review; [LINT.md](LINT.md) says so plainly. |
 
 Exit codes: **0** — the boundary holds. **1** — findings. **2** — the tool itself could not run (enumerated error codes, `--json` shows them).
+
+## Keeping the checker current
+
+The law moves. An installed binary does not, and a checker that has fallen behind the rules is worse than no checker — it reports a clean run for rules it never looked at. Two mechanisms, one for you and one for the project.
+
+**You get told.** `bfd` checks the Go module proxy — the same index `go install` resolves against — at most once a day, and prints one line when a newer release exists:
+
+```
+bfd v0.3.0 is available (you have v0.2.0) — run "bfd update"
+```
+
+It rides on `bfd conform`, the command you actually run, and `bfd version` asks immediately. There is no switch to turn it off — running a checker that has fallen behind the law is not a preference (BFD-27). It does stay out of two places, on correctness grounds rather than taste: never inside `--json` or a pipe, where a human notice would corrupt a machine-readable stream, and never when the network is unreachable or the binary was built locally, because neither is news. It never touches an exit code.
+
+```sh
+bfd version        # installed version, the law it carries, and whether it is current
+bfd conform        # prints the same list under "law:" on every run
+bfd update         # reinstall the latest through the Go toolchain
+```
+
+**The project gets to insist.** A notice you can ignore is not a gate.
+
+Declare what it expects in `bfd.yaml`, and a stale binary refuses the run — exit 2, code `rules_stale` — instead of passing. This is the half that works in CI, where nobody is reading notices:
+
+```yaml
+conform:
+  requires: [BFD-29]
+```
+
+`bfd init` writes that line. Two adoption paths keep themselves current without it: pinning `bfd` as a Go tool dependency (`go get -tool`) puts it in `go.mod` where Renovate and Dependabot bump it like anything else, and the Claude Code plugin updates the skill through the marketplace. Note those are separate clocks — the plugin carries the rules to the agent, the binary proves them — so a project relying on both should pin `requires` and let the binary tell you when it has fallen behind.
+
+One honest limit: `requires` only works from the release that introduced it onward. A binary older than that ignores the key, because it was never taught to look for it. That is the argument for pinning now rather than later.
 
 Wire checks are read-only GETs, so it is safe anywhere, including CI:
 

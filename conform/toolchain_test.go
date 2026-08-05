@@ -48,8 +48,22 @@ func requireFindingCount(t *testing.T, input requireCountInput) {
 const golangciConforming = `version: "2"
 linters:
   default: none
-  enable: [exhaustive, forbidigo, ireturn, revive, tagliatelle]
+  enable: [exhaustive, forbidigo, godox, ireturn, nolintlint, revive, tagliatelle]
 `
+
+// The toolchain tier is the one tier a project can fail without owning an API
+// at all, so it must run when there is no spec and no base URL to pair it with.
+func TestRunToolchainRunsWithoutSpecOrWire(t *testing.T) {
+	root := projectWrite(t, map[string]string{"go.mod": "module example.test\n"})
+	result := Run(RunInput{RootDir: root})
+	if !result.Ok {
+		t.Fatalf("expected a completed run, got error %+v", result.Error)
+	}
+	requireRules(t, requireRulesInput{Result: result, Rules: []string{"BFD-17"}})
+	if len(result.Data.Languages) != 1 || result.Data.Languages[0] != "go" {
+		t.Errorf("expected the go gate to be reported as checked, got %v", result.Data.Languages)
+	}
+}
 
 func TestRunToolchainGoNoConfig(t *testing.T) {
 	root := projectWrite(t, map[string]string{"go.mod": "module example.test\n"})
@@ -71,7 +85,7 @@ func TestRunToolchainGoPartial(t *testing.T) {
 	})
 	result := runToolchain(t, runToolchainInput{Root: root})
 	requireRules(t, requireRulesInput{Result: result, Rules: []string{"BFD-17"}})
-	requireFindingCount(t, requireCountInput{Result: result, Count: 4}) // exhaustive, forbidigo, ireturn, tagliatelle missing
+	requireFindingCount(t, requireCountInput{Result: result, Count: 6}) // exhaustive, forbidigo, godox, ireturn, nolintlint, tagliatelle missing
 }
 
 func TestRunToolchainPythonNoRuff(t *testing.T) {
@@ -82,16 +96,27 @@ func TestRunToolchainPythonNoRuff(t *testing.T) {
 func TestRunToolchainPythonRuffAll(t *testing.T) {
 	root := projectWrite(t, map[string]string{
 		"pyproject.toml": "[project]\nname = \"example\"\n",
-		"ruff.toml":      "[lint]\nselect = [\"ALL\"]\n",
+		"ruff.toml":      "[lint]\nselect = [\"ALL\"]\n[lint.flake8-bandit]\ncheck-typed-exception = true\n",
 	})
 	requireFindingCount(t, requireCountInput{Result: runToolchain(t, runToolchainInput{Root: root}), Count: 0})
 }
 
 func TestRunToolchainPythonRuffSelectors(t *testing.T) {
 	root := projectWrite(t, map[string]string{
-		"pyproject.toml": "[project]\nname = \"example\"\n[tool.ruff.lint]\nselect = [\"ANN\", \"DTZ\", \"FBT\", \"N\", \"PL\"]\n",
+		"pyproject.toml": "[project]\nname = \"example\"\n[tool.ruff.lint]\nselect = [\"ANN\", \"DTZ\", \"ERA\", \"FBT\", \"FIX\", \"N\", \"PGH\", \"PL\", \"S\"]\n[tool.ruff.lint.flake8-bandit]\ncheck-typed-exception = true\n",
 	})
 	requireFindingCount(t, requireCountInput{Result: runToolchain(t, runToolchainInput{Root: root}), Count: 0})
+}
+
+// Selecting S110/S112 is not the same as arming them: left at its default,
+// flake8-bandit ignores `except SomeError: pass`, which BFD-29 does not.
+func TestRunToolchainPythonRuffBanditUnarmed(t *testing.T) {
+	root := projectWrite(t, map[string]string{
+		"pyproject.toml": "[project]\nname = \"example\"\n[tool.ruff.lint]\nselect = [\"ALL\"]\n",
+	})
+	result := runToolchain(t, runToolchainInput{Root: root})
+	requireRules(t, requireRulesInput{Result: result, Rules: []string{"BFD-17"}})
+	requireFindingCount(t, requireCountInput{Result: result, Count: 1})
 }
 
 func TestRunToolchainPythonRuffInsufficient(t *testing.T) {
@@ -100,7 +125,7 @@ func TestRunToolchainPythonRuffInsufficient(t *testing.T) {
 	})
 	result := runToolchain(t, runToolchainInput{Root: root})
 	requireRules(t, requireRulesInput{Result: result, Rules: []string{"BFD-17"}})
-	requireFindingCount(t, requireCountInput{Result: result, Count: 5}) // ANN401, DTZ, FBT, N, PLR0913 uncovered
+	requireFindingCount(t, requireCountInput{Result: result, Count: 11}) // ten selectors uncovered, plus check-typed-exception unset
 }
 
 func TestRunToolchainJsNoConfig(t *testing.T) {
