@@ -35,8 +35,8 @@ linters:
     revive:
       rules:
         - name: flag-parameter # BFD-15: a trailing boolean is not an argument, it is two functions
-        - name: argument-limit # BFD-15: one struct argument; the limit of 2 admits only what Go itself mandates (ctx+input, w+r)
-          arguments: [2]
+        - name: argument-limit # BFD-15: one payload struct, plus what Go itself mandates — (w, r) or ctx — and nothing else
+          arguments: [3]
     tagliatelle:
       case:
         rules:

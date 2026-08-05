@@ -25,7 +25,7 @@ Every entry names the linter rule doing the work — stock rules only, in every 
 | BFD-3 | `exhaustive` — enumerated codes are handled exhaustively | — | — |
 | BFD-11 | `tagliatelle` — json tags are camelCase | `N` — snake_case on the backend | `naming-convention` — camelCase on the frontend |
 | BFD-12 | `forbidigo` — `time.Local` is forbidden | `DTZ` — naive datetimes do not exist | — |
-| BFD-15 | `revive` `argument-limit` (2: one struct plus what Go mandates) and `flag-parameter` | `PLR0913` at `max-args = 1` (`self` is free) and `FBT` | `max-params` at 1 |
+| BFD-15 | `revive` `argument-limit` (3: one payload struct plus what Go mandates) and `flag-parameter` | `PLR0913` at `max-args = 1` (`self` is free) and `FBT` | `max-params` at 1 |
 | BFD-16 | `ireturn` — no empty-interface returns | `ANN` — every type explicit; `ANN401` bans `typing.Any` | `no-explicit-any` |
 | BFD-22 | — | — | `no-restricted-globals` / `no-restricted-imports` — HTTP lives in the API service, nowhere else |
 | BFD-29 | `godox` — no deferral markers; `nolintlint` — suppressions specific, explained, and never unused | `FIX` — markers; `ERA` — commented-out code; `PGH` — blanket `noqa` / `type: ignore`; `S110` — swallowed exceptions | `no-warning-comments` — markers; `no-empty` — swallowed catches; `ban-ts-comment` — suppressions |
@@ -35,6 +35,7 @@ The ESLint fence points at `**/services/api/**` by default; point the glob at yo
 ## What It Deliberately Does Not Claim
 
 - No stock Go linter bans `any` in parameters or struct fields — `ireturn` holds the return side of BFD-16 and review holds the rest. That is a gap in the ecosystem, stated plainly, not papered over with a custom analyzer.
+- `argument-limit` counts parameters and cannot read them, so it cannot tell `(w, r, input)` from `(a, b, c)`. The limit is 3 because Go mandates `(w, r)` for a handler and BFD-15 allows one payload struct on top; the cost is that a genuine three-argument positional chain now passes the gate. Review holds that case. The limit is not 2: parameters the language imposes are not the function's arguments, and the transposition BFD-15 exists to prevent cannot happen between a `ResponseWriter`, a `*Request`, and a payload anyway.
 - No stock Go linter forbids `//nolint` outright, so BFD-29's suppression clause is enforced as far as `nolintlint` reaches: every directive must be specific, explained, and actually suppressing something. A defended suppression is still a suppression, and review still rejects it.
 - BFD-29's deferred-capability clause — shipping an API before its authentication — is not a lint finding in any ecosystem. Linters see the code that exists, never the code someone decided to write later. That half of the rule belongs to the governed agent and to review.
 - BFD-13 (regular plurals) and BFD-28 (general-to-specific naming) have no stock rules in any ecosystem. They stay with the governed agent and with review — where `bfd conform` already proves BFD-13 on everything that crosses the wire.
