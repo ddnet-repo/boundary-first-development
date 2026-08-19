@@ -129,7 +129,7 @@ func toolchainModulesFind(input toolchainModulesInput) []toolchainModule {
 			if !entry.IsDir() || strings.HasPrefix(name, ".") || toolchainDirectorySkip[name] {
 				continue
 			}
-			walk(filepath.Join(directory, name), depth+1)
+			walk(filepath.ToSlash(filepath.Join(directory, name)), depth+1)
 		}
 	}
 	walk("", 0)
