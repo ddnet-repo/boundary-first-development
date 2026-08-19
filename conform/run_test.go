@@ -38,7 +38,7 @@ func requireRules(t *testing.T, input requireRulesInput) {
 }
 
 func TestRunSpecClean(t *testing.T) {
-	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml"})
+	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", RootDir: t.TempDir()})
 	if !result.Ok {
 		t.Fatalf("run failed: %s (%s)", result.Error.Message, result.Error.Code)
 	}
@@ -48,7 +48,7 @@ func TestRunSpecClean(t *testing.T) {
 }
 
 func TestRunSpecViolating(t *testing.T) {
-	result := Run(RunInput{SpecPath: "testdata/spec_violating.yaml"})
+	result := Run(RunInput{SpecPath: "testdata/spec_violating.yaml", RootDir: t.TempDir()})
 	requireRules(t, requireRulesInput{Result: result, Rules: []string{
 		"BFD-2",  // /people response is not the envelope
 		"BFD-3",  // /orders error code has no enum
@@ -79,7 +79,7 @@ func TestRunRulesStale(t *testing.T) {
 }
 
 func TestRunRulesCarried(t *testing.T) {
-	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", RulesRequired: []string{"BFD-29", "bfd-2"}})
+	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", RulesRequired: []string{"BFD-29", "bfd-2"}, RootDir: t.TempDir()})
 	if !result.Ok {
 		t.Fatalf("expected the run to proceed, got error %+v", result.Error)
 	}
@@ -89,7 +89,7 @@ func TestRunRulesCarried(t *testing.T) {
 }
 
 func TestRunInputEmpty(t *testing.T) {
-	result := Run(RunInput{})
+	result := Run(RunInput{RootDir: t.TempDir()})
 	if result.Ok || result.Error.Code != ErrorCodeInputEmpty {
 		t.Errorf("expected %s, got %+v", ErrorCodeInputEmpty, result)
 	}
@@ -127,7 +127,7 @@ func serverViolating() *httptest.Server {
 func TestRunWireClean(t *testing.T) {
 	server := serverConforming()
 	defer server.Close()
-	result := Run(RunInput{BaseURL: server.URL, Endpoints: []string{"/persons"}})
+	result := Run(RunInput{BaseURL: server.URL, Endpoints: []string{"/persons"}, RootDir: t.TempDir()})
 	if !result.Ok {
 		t.Fatalf("run failed: %s (%s)", result.Error.Message, result.Error.Code)
 	}
@@ -139,7 +139,7 @@ func TestRunWireClean(t *testing.T) {
 func TestRunWireViolating(t *testing.T) {
 	server := serverViolating()
 	defer server.Close()
-	result := Run(RunInput{BaseURL: server.URL, Endpoints: []string{"/people"}})
+	result := Run(RunInput{BaseURL: server.URL, Endpoints: []string{"/people"}, RootDir: t.TempDir()})
 	requireRules(t, requireRulesInput{Result: result, Rules: []string{
 		"BFD-2",  // no envelope on /people, naked 404 on the probe
 		"BFD-7",  // no serverTime
@@ -159,7 +159,7 @@ func TestRunWireUnreachable(t *testing.T) {
 func TestRunSpecAndWireTogether(t *testing.T) {
 	server := serverConforming()
 	defer server.Close()
-	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", BaseURL: server.URL})
+	result := Run(RunInput{SpecPath: "testdata/spec_clean.yaml", BaseURL: server.URL, RootDir: t.TempDir()})
 	if !result.Ok {
 		t.Fatalf("run failed: %s (%s)", result.Error.Message, result.Error.Code)
 	}

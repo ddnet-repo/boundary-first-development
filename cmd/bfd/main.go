@@ -79,12 +79,13 @@ type configFile struct {
 }
 
 type configConform struct {
-	Spec      string     `yaml:"spec"`
-	BaseURL   string     `yaml:"baseUrl"`
-	Endpoints []string   `yaml:"endpoints"`
-	Languages []string   `yaml:"languages"` // toolchain tier; nil detects, [] disables
-	Requires  []string   `yaml:"requires"`  // rules this project demands its bfd can check
-	Auth      configAuth `yaml:"auth"`
+	Spec      string                 `yaml:"spec"`
+	BaseURL   string                 `yaml:"baseUrl"`
+	Endpoints []string               `yaml:"endpoints"`
+	Languages []string               `yaml:"languages"` // toolchain tier; nil detects, [] disables
+	Requires  []string               `yaml:"requires"`  // rules this project demands its bfd can check
+	Auth      configAuth             `yaml:"auth"`
+	Workflow  conform.WorkflowConfig `yaml:"workflow"` // workflow tier; zero values take the defaults
 }
 
 type configAuth struct {
@@ -123,6 +124,7 @@ func commandConform(args []string) {
 		TimeoutSeconds:  *timeoutFlag,
 		Languages:       config.Conform.Languages,
 		RulesRequired:   config.Conform.Requires,
+		Workflow:        config.Conform.Workflow,
 	})
 
 	if *jsonFlag {
@@ -148,6 +150,13 @@ const configTemplate = `conform:
   # auth:
   #   header: Authorization
   #   valueEnv: BFD_CONFORM_TOKEN
+
+  # workflow:                         # the workflow tier judges the git graph itself
+  #   production: main                # default: main, then master
+  #   release: release/*
+  #   staging: [staging/*, testing/*]
+  #   tags: v*
+  #   epoch: <sha>                    # judge history from here forward; set it at adoption
 
   # The law this project expects its checker to carry. A bfd too old to check
   # a listed rule exits 2 instead of reporting a clean run it cannot vouch for.
@@ -264,6 +273,9 @@ func resultPrint(input resultPrintInput) {
 	}
 	if len(result.Data.Languages) > 0 {
 		fmt.Printf("  gate: %s\n", strings.Join(result.Data.Languages, ", "))
+	}
+	if result.Data.Workflow != "" {
+		fmt.Printf("  flow: %s\n", result.Data.Workflow)
 	}
 	fmt.Printf("  law:  %s\n", strings.Join(result.Data.Rules, ", "))
 	fmt.Println()

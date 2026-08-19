@@ -76,10 +76,16 @@ func Run(input RunInput) RunResult {
 		Report:    report,
 		Note:      note,
 	})
-	if input.SpecPath == "" && input.BaseURL == "" && len(toolchain.Checked) == 0 {
+	workflow := workflowCheckAll(workflowCheckInput{
+		RootDir: rootDir,
+		Config:  input.Workflow,
+		Report:  report,
+		Note:    note,
+	})
+	if input.SpecPath == "" && input.BaseURL == "" && len(toolchain.Checked) == 0 && workflow.Production == "" {
 		return RunResult{Error: RunError{
 			Code:    ErrorCodeInputEmpty,
-			Message: "nothing to check: no spec, no base URL, and no linted language detected here",
+			Message: "nothing to check: no spec, no base URL, no linted language, and no git history here",
 		}}
 	}
 
@@ -93,6 +99,7 @@ func Run(input RunInput) RunResult {
 		Findings:  findings,
 		Endpoints: probed,
 		Languages: toolchain.Checked,
+		Workflow:  workflow.Production,
 		Rules:     RulesProven,
 		Notes:     notes,
 	}}

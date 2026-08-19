@@ -1,6 +1,6 @@
 # Proving It
 
-Rules that live on the wire can be proven, not just reviewed. This repo ships **`bfd conform`**, a single-binary conformance tool that deterministically checks a project's boundary artifacts — the OpenAPI contract and the running API — with zero knowledge of the language behind them. Go, Rust, or a rewrite next quarter: the tool cannot tell, which is the point (BFD-26). A third tier checks the toolchain: BFD-17 says nothing merges without a lint gate, so conform verifies the gate exists ([LINT.md](LINT.md)) — by reading its config, never by running it.
+Rules that live on the wire can be proven, not just reviewed. This repo ships **`bfd conform`**, a single-binary conformance tool that deterministically checks a project's boundary artifacts — the OpenAPI contract and the running API — with zero knowledge of the language behind them. Go, Rust, or a rewrite next quarter: the tool cannot tell, which is the point (BFD-26). A third tier checks the toolchain: BFD-17 says nothing merges without a lint gate, so conform verifies the gate exists ([LINT.md](LINT.md)) — by reading its config, never by running it. A fourth tier checks the workflow: BFD-30 through BFD-33 say production advances only by tagged merges from release branches, and conform proves it by reading the git graph itself — evidence, not forge configuration, so the same proof works on Codeberg, GitHub, GitLab, or a bare clone.
 
 ## Install
 
@@ -34,7 +34,7 @@ bfd conform                                    # toolchain + static: auto-discov
 bfd conform --base-url http://localhost:8080   # + live: probes the wire, read-only
 ```
 
-The toolchain tier runs on every invocation, so a project with no spec and no running API still has its lint gate proven. Only a project with none of the three — no spec, no base URL, no linted language — has nothing to check.
+The toolchain and workflow tiers run on every invocation, so a project with no spec and no running API still has its lint gate and its git graph proven. Only a project with none of the four — no spec, no base URL, no linted language, no git history — has nothing to check.
 
 The spec is auto-discovered as `openapi.yaml|yml|json` in the root, `api/`, `docs/`, `spec/`, or `openapi/`. An optional `bfd.yaml` makes the invocation standing:
 
@@ -45,6 +45,12 @@ conform:
   endpoints: [/persons, /projects]   # extra GET paths beyond spec discovery
   languages: [go]                    # toolchain tier; default: detected from manifests, [] disables
   requires: [BFD-29]                 # refuse to run on a bfd too old to check these
+  workflow:
+    production: main                 # default: main, then master
+    release: release/*
+    staging: [staging/*, testing/*]
+    tags: v*
+    epoch: 639bb35                   # judge history from here forward; set at adoption
   auth:
     header: Authorization            # value read from $BFD_CONFORM_TOKEN
 ```
@@ -66,11 +72,23 @@ Every finding cites its rule ID.
 | BFD-11 | camelCase on the wire, in the spec and in live bodies. |
 | BFD-12 | Timestamps are declared `date-time` and transmitted as UTC. Any RFC3339 value anywhere in a live body with a non-zero offset is a finding. |
 | BFD-13 | Regular plurals in routes, schema names, properties, and live keys. |
-| BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Every module is found by its manifest — including a monorepo's frontends and nested services — and its config resolved upward the way linters resolve it. Configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). |
+| BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Every module is found by its manifest — including a monorepo's frontends and nested services — and its config resolved upward the way linters resolve it. Configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). The workflow tier adds the wiring proof: a committed hook-manager config exists (lefthook, pre-commit, husky, `.githooks`) — hooks that live on one laptop do not exist. |
 | BFD-18 | The spec declares an apiKey security scheme — the Public API is keyed and documented. The App API may live outside the spec; it moves with the product. |
 | BFD-29 | The lint gate bans the artifacts of deferred work — markers, suppressions, swallowed exceptions, commented-out code. The deferred-*capability* half of the rule is not lintable and stays with review; [LINT.md](LINT.md) says so plainly. |
+| BFD-30 | Production's first-parent line since the epoch holds only merge commits, each carrying a version tag. A direct commit or an untagged merge is a finding with a count and the latest offender. |
+| BFD-31 | Version tags sit on production's first-parent line, nowhere else. A tag on a side branch is a release that did not ship through the door. |
+| BFD-32 | Staging never merges into production, and staging-only commits carry recorded cherry-pick provenance (`git cherry-pick -x`). |
+| BFD-33 | A recognized CI configuration is committed (Forgejo/Gitea/GitHub workflows, GitLab, Woodpecker, Jenkins, CircleCI, Azure, Bitbucket) and it invokes `bfd conform`. A pipeline that skips the gate is scenery. |
 
 Exit codes: **0** — the boundary holds. **1** — findings. **2** — the tool itself could not run (enumerated error codes, `--json` shows them).
+
+## The workflow tier
+
+Branch protections are forge configuration: every forge spells them differently, and none of them travel with a clone. But the thing protections exist to produce — a clean history — is the repository itself. So the workflow tier never calls a forge API. It reads the graph with plain git plumbing, read-only, and judges what actually happened: production's first-parent line is the sequence of states production has been in, and every violation of BFD-30 through BFD-32 leaves a permanent scar there. Hooks are the courtesy layer, CI is the enforcement layer, and the graph is the audit layer — an escape can skip a hook, but it cannot skip having been recorded.
+
+Adoption starts at the **epoch**: set `workflow.epoch` in `bfd.yaml` to the commit where the repository takes up the workflow, and history before it is not on trial. Without an epoch the full history is judged — honest, but usually a flood; `bfd init` reminds you to set one. Findings aggregate (a count and the latest offender per rule), so a messy past is one line, not a thousand.
+
+What the tier deliberately cannot see: the *name* of a deleted branch (a merge from a deleted release branch is judged by its tag, not its name), and forge-side settings themselves — declare those on the forge as well, and let the graph prove they held.
 
 ## Keeping the checker current
 

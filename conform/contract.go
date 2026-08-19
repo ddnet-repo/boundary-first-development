@@ -18,6 +18,7 @@ package conform
 var RulesProven = []string{
 	"BFD-2", "BFD-3", "BFD-7", "BFD-8", "BFD-11",
 	"BFD-12", "BFD-13", "BFD-17", "BFD-18", "BFD-29",
+	"BFD-30", "BFD-31", "BFD-32", "BFD-33",
 }
 
 // Finding is one observed violation of a BFD rule.
@@ -41,6 +42,8 @@ type RunInput struct {
 	RootDir         string   `json:"rootDir"`        // project root for the toolchain tier; defaults to "."
 	Languages       []string `json:"languages"`      // nil: detect from manifests; []: skip the toolchain tier
 	RulesRequired   []string `json:"rulesRequired"`  // rules the project demands; a build without them refuses to run
+
+	Workflow WorkflowConfig `json:"workflow"` // branch names for the workflow tier; zero values take the defaults
 }
 
 // RunError carries an enumerated code for tool-level failures. Findings are
@@ -55,6 +58,7 @@ type RunData struct {
 	Findings  []Finding `json:"findings"`  // sorted by rule, then location
 	Endpoints []string  `json:"endpoints"` // wire paths actually probed
 	Languages []string  `json:"languages"` // toolchain gates actually examined
+	Workflow  string    `json:"workflow"`  // production branch the workflow tier judged; "" when unchecked
 	Rules     []string  `json:"rules"`     // the law this build carries; see RulesProven
 	Notes     []string  `json:"notes"`     // checks skipped or degraded, stated plainly
 }
