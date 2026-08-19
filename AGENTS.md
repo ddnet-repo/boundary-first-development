@@ -21,7 +21,7 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 **Claude Code** — install the plugin once. Nothing in your repos changes.
 
 ```
-/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
+/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development.git
 /plugin install bfd@galaxi
 ```
 
