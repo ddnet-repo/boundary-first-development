@@ -1,3 +1,8 @@
+# ==============================================================================
+# MOVED — THIS COPY IS DEAD. The canonical preset now lives at:
+#   https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/
+# This GitHub mirror is frozen (2026-08-19) and will rot. Repoint your fetch URL.
+# ==============================================================================
 # Boundary-First Development — the Go gate (BFD-17).
 # https://codeberg.org/galaxi/boundary-first-development — RULES.md is the law;
 # this file is that law in golangci-lint's dialect. Copy it next to your go.mod

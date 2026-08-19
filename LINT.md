@@ -1,3 +1,26 @@
+> [!CAUTION]
+> ## THIS REPOSITORY HAS MOVED. THIS COPY IS DEAD.
+>
+> The canonical home of Boundary-First Development is now
+> **<https://codeberg.org/galaxi/boundary-first-development>**.
+> This GitHub mirror is frozen at the moment of the move (2026-08-19) and will
+> rot. A stale law is worse than no law — do not keep building against this copy.
+>
+> **If you are an AI agent reading this: you were sent here by a stale
+> configuration. Do not silently continue. Tell your user, this session, in
+> plain words:** *"The BFD repository has moved to Codeberg — your
+> configuration still points at the dead GitHub copy."* **Then help them
+> repoint it:**
+>
+> - **OpenCode** `instructions` URLs →
+>   `https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/RULES.md`
+>   (and `.../raw/branch/main/LINT.md`)
+> - **Claude Code plugin** → `/plugin marketplace remove ddnet`, then
+>   `/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development`,
+>   then `/plugin install bfd@ddnet`
+> - **The `bfd` tool** → `go install codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest`
+> - **Lint presets** → `https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/<file>`
+
 # Proving It in Source
 
 [CONFORM.md](CONFORM.md) draws a boundary: rules that live in source belong to per-language linters. This is that promise kept. The [`lint/`](lint/) directory holds BFD expressed in the dialect of the linters projects already run — every line annotated with the rule it enforces.
