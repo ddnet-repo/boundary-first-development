@@ -2,8 +2,3 @@ conform:
   # The law this project expects its checker to carry. A bfd too old to check
   # a listed rule exits 2 instead of reporting a clean run it cannot vouch for.
   requires: [BFD-33]
-
-  workflow:
-    # Workflow adoption epoch: the commit where this repository took up
-    # BFD-30 through BFD-33. History before it is not on trial.
-    epoch: 639bb358dad82aca10bebbfc79a17ae40d350dab
