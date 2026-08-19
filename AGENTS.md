@@ -22,7 +22,7 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 
 ```
 /plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
-/plugin install bfd@ddnet
+/plugin install bfd@galaxi
 ```
 
 "Follow BFD" now works in every project. The skill carries the rules with it; your `CLAUDE.md` is never touched. (No plugins? Copy `skills/bfd/` into `~/.claude/skills/` — same effect.)

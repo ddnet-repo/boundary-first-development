@@ -24,14 +24,14 @@ Agents follow BFD when the rules are in their context, not because this repo is 
 
 ```
 /plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
-/plugin install bfd@ddnet
+/plugin install bfd@galaxi
 ```
 
 Or from the terminal, for scripts and machine setup:
 
 ```sh
 claude plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
-claude plugin install bfd@ddnet
+claude plugin install bfd@galaxi
 ```
 
 **OpenCode** — point your config (global or per-project `opencode.json`) at the canonical rules:
