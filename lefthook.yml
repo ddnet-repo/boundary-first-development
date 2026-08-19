@@ -1,0 +1,18 @@
+# The gate runs on hooks (BFD-17). CI runs the same gates (BFD-33); this is
+# the fast local layer, not the enforcement layer.
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      glob: "*.go"
+      run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+    vet:
+      glob: "*.go"
+      run: go vet ./...
+
+pre-push:
+  commands:
+    test:
+      run: go test ./...
+    conform:
+      run: go run ./cmd/bfd conform

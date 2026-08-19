@@ -81,6 +81,13 @@ These rules are not a review filter. They are how you design and build everythin
 - **BFD-27** — There are no special cases. If something cannot follow the rules, the thing is redesigned — never the rules. Disagree with a rule? Change the canonical document and own it. Exceptions granted in code are how the whole system dies.
 - **BFD-29** — Nothing ships provisionally. Every capability a thing needs is built when the thing is built: authentication is not a later phase, and neither are authorization, soft deletes, enumerated codes, the sync fields, or the tests. "We will add it when we need it" is a decision to ship a known defect and hope. In code this means no stubs returning invented data, no `TODO`/`FIXME`/`HACK`, no lint suppressions, no skipped tests, no swallowed exceptions, no commented-out code. When correct is big, it does not get smaller by being done badly — it gets smaller by being cut along its boundaries. Offer the more direct approach that is still complete, or split the work into contracted units (BFD-1) and land them one at a time, each whole. Scope shrinks; completeness never does. Building it correctly is the fast path — the second pass is the expensive one.
 
+### Workflow
+
+- **BFD-30** — The production branch (`main`) is production. It advances only by merge commits, and every merge into it carries a version tag. A direct commit on production's first-parent line is not a style choice; it is an unreviewed deploy.
+- **BFD-31** — Work lands in release branches (`release/*`), cut from production. Features and fixes merge into the release; the release merges back whole. Version tags live on production's first-parent line — a tag anywhere else is a release that did not ship through the door.
+- **BFD-32** — Staging and testing branches are projections with their own environments, populated by recorded cherry-picks (`git cherry-pick -x`) — provenance is part of the contract. Staging is rebuilt from production; it never merges back.
+- **BFD-33** — The pipeline lives in the repository and runs the gates — lint, tests, `bfd conform` — on every path to production. Hooks are the courtesy layer, CI is the enforcement layer, and the graph is the audit layer: an escape can skip a hook, but it cannot skip having been recorded. Branch protections on the forge are welcome; the graph is the proof that works everywhere.
+
 ---
 
 ## Glossary
@@ -95,15 +102,18 @@ These rules are not a review filter. They are how you design and build everythin
 - **Working copy** — the mutable deep copy the UI binds to, changed only through store actions.
 - **Sync** — the `updatedAfter` mechanism (BFD-7 through BFD-10). The timestamp is the event.
 - **Public API / App API** — the stable, keyed, documented surface vs. the JWT-authed surface that moves with the product (BFD-18).
+- **Production branch** — the branch that is production (`main`). Its first-parent history is the sequence of states production has been in (BFD-30).
+- **Epoch** — the revision where a repository adopted the workflow rules. History before it is not on trial (BFD-30 through BFD-33 judge from the epoch forward).
 
 ---
 
 ## The PR Checklist
 
-Five questions. Any wrong answer and it does not merge.
+Six questions. Any wrong answer and it does not merge.
 
 1. Does the contract hold? Input and output structs unchanged, or the change is deliberate and the Public API didn't break. (BFD-1, BFD-18)
 2. Is every type explicit? No `any`, no `interface{}`, no positional chains. (BFD-15, BFD-16)
 3. Does translation happen at the boundary? Casing converted, timestamps UTC. (BFD-11, BFD-12)
 4. Is there an integration test asserting the contract? (BFD-25)
 5. Do components contain logic or API calls? They'd better not. (BFD-4, BFD-22)
+6. Is it landing through the workflow? Into a release branch, merged whole, tagged on production — never a direct commit. (BFD-30, BFD-31)

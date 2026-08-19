@@ -1,0 +1,27 @@
+# The gates (BFD-33): lint, tests, and bfd conform on every path to
+# production. fetch-depth 0 because the workflow tier judges the graph,
+# and a shallow clone has no graph to judge.
+name: gates
+on:
+  push:
+    branches: [main, release/*]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: fmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: vet
+        run: go vet ./...
+      - name: test
+        run: go test ./...
+      - name: conform
+        run: go run ./cmd/bfd conform
