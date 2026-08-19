@@ -151,12 +151,11 @@ const configTemplate = `conform:
   #   header: Authorization
   #   valueEnv: BFD_CONFORM_TOKEN
 
-  # workflow:                         # the workflow tier judges the git graph itself
-  #   production: main                # default: main, then master
-  #   release: release/*
-  #   staging: [staging/*, testing/*]
+  # workflow:                         # the workflow tier judges the git graph itself,
+  #   production: main                # default: main, then master — since the last
+  #   release: release/*              # version tag on production; shipping a
+  #   staging: [staging/*, testing/*] # conforming release closes the old books
   #   tags: v*
-  #   epoch: <sha>                    # judge history from here forward; set it at adoption
 
   # The law this project expects its checker to carry. A bfd too old to check
   # a listed rule exits 2 instead of reporting a clean run it cannot vouch for.

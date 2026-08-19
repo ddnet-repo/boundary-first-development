@@ -50,7 +50,6 @@ conform:
     release: release/*
     staging: [staging/*, testing/*]
     tags: v*
-    epoch: 639bb35                   # judge history from here forward; set at adoption
   auth:
     header: Authorization            # value read from $BFD_CONFORM_TOKEN
 ```
@@ -75,8 +74,8 @@ Every finding cites its rule ID.
 | BFD-17 | The lint gate exists and enforces the BFD-mapped rules. Every module is found by its manifest — including a monorepo's frontends and nested services — and its config resolved upward the way linters resolve it. Configs are read, never executed. The gates themselves are in [LINT.md](LINT.md). The workflow tier adds the wiring proof: a committed hook-manager config exists (lefthook, pre-commit, husky, `.githooks`) — hooks that live on one laptop do not exist. |
 | BFD-18 | The spec declares an apiKey security scheme — the Public API is keyed and documented. The App API may live outside the spec; it moves with the product. |
 | BFD-29 | The lint gate bans the artifacts of deferred work — markers, suppressions, swallowed exceptions, commented-out code. The deferred-*capability* half of the rule is not lintable and stays with review; [LINT.md](LINT.md) says so plainly. |
-| BFD-30 | Production's first-parent line since the epoch holds only merge commits, each carrying a version tag. A direct commit or an untagged merge is a finding with a count and the latest offender. |
-| BFD-31 | Version tags sit on production's first-parent line, nowhere else. A tag on a side branch is a release that did not ship through the door. |
+| BFD-30 | The release window — production's first-parent line since the last version tag on it — holds only tagged merges. A direct commit or an untagged merge is a finding with a count and the latest offender; a repository where no release has ever shipped is told exactly that. |
+| BFD-31 | The current release tag sits on production's first-parent line. A newest tag on a side branch is a release that did not ship through the door. |
 | BFD-32 | Staging never merges into production, and staging-only commits carry recorded cherry-pick provenance (`git cherry-pick -x`). |
 | BFD-33 | A recognized CI configuration is committed (Forgejo/Gitea/GitHub workflows, GitLab, Woodpecker, Jenkins, CircleCI, Azure, Bitbucket) and it invokes `bfd conform`. A pipeline that skips the gate is scenery. |
 
@@ -86,7 +85,7 @@ Exit codes: **0** — the boundary holds. **1** — findings. **2** — the tool
 
 Branch protections are forge configuration: every forge spells them differently, and none of them travel with a clone. But the thing protections exist to produce — a clean history — is the repository itself. So the workflow tier never calls a forge API. It reads the graph with plain git plumbing, read-only, and judges what actually happened: production's first-parent line is the sequence of states production has been in, and every violation of BFD-30 through BFD-32 leaves a permanent scar there. Hooks are the courtesy layer, CI is the enforcement layer, and the graph is the audit layer — an escape can skip a hook, but it cannot skip having been recorded.
 
-Adoption starts at the **epoch**: set `workflow.epoch` in `bfd.yaml` to the commit where the repository takes up the workflow, and history before it is not on trial. Without an epoch the full history is judged — honest, but usually a flood; `bfd init` reminds you to set one. Findings aggregate (a count and the latest offender per rule), so a messy past is one line, not a thousand.
+The tier judges the present, not the archaeology. The **release window** is production's first-parent line since the most recent version tag on it — what has happened since the last release shipped. There is no adoption config and no grace flag: a repository with years of direct commits and no tags gets one aggregated finding saying no release has ever shipped through the door, and the remedy is to ship one — cut a release branch, merge it whole, tag the merge. That release closes the old books, and from then on only the current cycle is ever on trial. The one way to quiet a scar is to ship correctly.
 
 What the tier deliberately cannot see: the *name* of a deleted branch (a merge from a deleted release branch is judged by its tag, not its name), and forge-side settings themselves — declare those on the forge as well, and let the graph prove they held.
 

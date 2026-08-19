@@ -60,17 +60,32 @@ func workflowGatesPlant(t *testing.T, dir string) {
 	gitTest(t, dir, "commit", "-q", "-m", "gates")
 }
 
-type workflowFindingsInput struct {
+// workflowReleaseShip lands one file on production the legal way: a release
+// branch, a --no-ff merge, and a version tag on the merge.
+type workflowReleaseShipInput struct {
 	Dir    string
-	Config WorkflowConfig
+	Branch string
+	File   string
+	Tag    string
 }
 
-func workflowFindingsRun(t *testing.T, input workflowFindingsInput) []Finding {
+func workflowReleaseShip(t *testing.T, input workflowReleaseShipInput) {
+	t.Helper()
+	gitTest(t, input.Dir, "checkout", "-q", "-b", input.Branch)
+	workflowFileWrite(t, input.Dir, input.File, "work\n")
+	gitTest(t, input.Dir, "add", ".")
+	gitTest(t, input.Dir, "commit", "-q", "-m", "feature")
+	gitTest(t, input.Dir, "checkout", "-q", "main")
+	gitTest(t, input.Dir, "merge", "-q", "--no-ff", "-m", "Merge "+input.Branch, input.Branch)
+	gitTest(t, input.Dir, "tag", input.Tag)
+}
+
+func workflowFindingsRun(t *testing.T, dir string, config WorkflowConfig) []Finding {
 	t.Helper()
 	findings := []Finding{}
 	workflowCheckAll(workflowCheckInput{
-		RootDir: input.Dir,
-		Config:  input.Config,
+		RootDir: dir,
+		Config:  config,
 		Report:  func(finding Finding) { findings = append(findings, finding) },
 		Note:    func(string) {},
 	})
@@ -105,107 +120,103 @@ func TestWorkflowNotARepositoryChecksNothing(t *testing.T) {
 func TestWorkflowCleanReleaseFlowHolds(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 
-	gitTest(t, dir, "checkout", "-q", "-b", "release/v1")
-	workflowFileWrite(t, dir, "feature.txt", "work\n")
-	gitTest(t, dir, "add", ".")
-	gitTest(t, dir, "commit", "-q", "-m", "feature")
-	gitTest(t, dir, "checkout", "-q", "main")
-	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge release/v1", "release/v1")
-	gitTest(t, dir, "tag", "v1.0.0")
-
-	findings := workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}})
+	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
 	if len(findings) != 0 {
 		t.Errorf("a clean release flow must hold, got %+v", findings)
 	}
 }
 
-func TestWorkflowDirectCommitOnMainIsFound(t *testing.T) {
+func TestWorkflowShippingAReleaseClosesTheBooks(t *testing.T) {
+	dir := workflowRepoNew(t)
+	workflowFileWrite(t, dir, "legacy.txt", "old sins\n")
+	gitTest(t, dir, "add", ".")
+	gitTest(t, dir, "commit", "-q", "-m", "years of direct commits")
+	workflowGatesPlant(t, dir)
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
+
+	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
+	if len(findings) != 0 {
+		t.Errorf("the window is judged, not the archaeology — shipping a release closes the books, got %+v", findings)
+	}
+}
+
+func TestWorkflowDirectCommitSinceTheLastRelease(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 	workflowFileWrite(t, dir, "hotpatch.txt", "oops\n")
 	gitTest(t, dir, "add", ".")
 	gitTest(t, dir, "commit", "-q", "-m", "pushed straight to prod")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
 	if len(findings) != 1 {
 		t.Fatalf("expected one aggregated BFD-30 finding, got %+v", findings)
 	}
-	if !strings.Contains(findings[0].Message, "1 direct commit(s)") {
-		t.Errorf("the finding must count the scars, got %q", findings[0].Message)
+	if !strings.Contains(findings[0].Message, "1 direct commit(s)") || !strings.Contains(findings[0].Message, "since the last release") {
+		t.Errorf("the finding must count the window's scars, got %q", findings[0].Message)
 	}
 }
 
-func TestWorkflowEpochShieldsThePast(t *testing.T) {
+func TestWorkflowNoReleaseHasEverShipped(t *testing.T) {
 	dir := workflowRepoNew(t)
-	workflowFileWrite(t, dir, "legacy.txt", "old sins\n")
-	gitTest(t, dir, "add", ".")
-	gitTest(t, dir, "commit", "-q", "-m", "pre-adoption direct commit")
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
 
-	findings := workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}})
-	if len(findings) != 0 {
-		t.Errorf("history before the epoch is not on trial, got %+v", findings)
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
+	if len(findings) != 1 || !strings.Contains(findings[0].Message, "no release has ever shipped") {
+		t.Errorf("a repository with no tagged release must be told so, got %+v", findings)
 	}
 }
 
 func TestWorkflowUntaggedMergeIsFound(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
-	gitTest(t, dir, "checkout", "-q", "-b", "release/v1")
-	workflowFileWrite(t, dir, "feature.txt", "work\n")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
+	gitTest(t, dir, "checkout", "-q", "-b", "release/v2")
+	workflowFileWrite(t, dir, "more.txt", "work\n")
 	gitTest(t, dir, "add", ".")
-	gitTest(t, dir, "commit", "-q", "-m", "feature")
+	gitTest(t, dir, "commit", "-q", "-m", "feature two")
 	gitTest(t, dir, "checkout", "-q", "main")
-	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge release/v1", "release/v1")
+	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge release/v2", "release/v2")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-30")
-	if len(findings) != 1 || !strings.Contains(findings[0].Message, "carry no") {
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
+	if len(findings) != 1 || !strings.Contains(findings[0].Message, "carry no version tag") {
 		t.Errorf("an untagged merge into production must be found, got %+v", findings)
 	}
 }
 
-func TestWorkflowTagOffTheLineIsFound(t *testing.T) {
+func TestWorkflowCurrentReleaseOffTheLineIsFound(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
-	gitTest(t, dir, "checkout", "-q", "-b", "release/v1")
-	workflowFileWrite(t, dir, "feature.txt", "work\n")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
+	gitTest(t, dir, "checkout", "-q", "-b", "release/v9")
+	workflowFileWrite(t, dir, "sneaky.txt", "work\n")
 	gitTest(t, dir, "add", ".")
-	gitTest(t, dir, "commit", "-q", "-m", "feature")
-	gitTest(t, dir, "tag", "v9.9.9") // tagged on the release branch, never shipped
+	gitTest(t, dir, "commit", "-q", "-m", "never shipped")
+	gitTest(t, dir, "tag", "v9.9.9") // the current release, tagged off production's line
 	gitTest(t, dir, "checkout", "-q", "main")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-31")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-31")
 	if len(findings) != 1 || !strings.Contains(findings[0].Where, "v9.9.9") {
-		t.Errorf("a version tag off production's line must be found, got %+v", findings)
+		t.Errorf("the current release tag off production's line must be found, got %+v", findings)
 	}
 }
 
 func TestWorkflowStagingMergedBackIsFound(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 	gitTest(t, dir, "checkout", "-q", "-b", "staging")
 	workflowFileWrite(t, dir, "experiment.txt", "staging only\n")
 	gitTest(t, dir, "add", ".")
-	gitTest(t, dir, "commit", "-q", "-m", "staging experiment")
+	gitTest(t, dir, "commit", "-q", "-m", "staging experiment\n\n(cherry picked from commit 0000000000000000000000000000000000000000)")
 	gitTest(t, dir, "checkout", "-q", "main")
 	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge staging", "staging")
-	gitTest(t, dir, "tag", "v1.0.0") // tagged, so only the staging rule trips
+	gitTest(t, dir, "tag", "v1.1.0") // tagged, so only the staging rule trips
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-32")
-	found := false
-	for _, finding := range findings {
-		if strings.Contains(finding.Message, "merged into main") {
-			found = true
-		}
-	}
-	if !found {
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
+	if len(findings) != 1 || !strings.Contains(findings[0].Message, "merged into main") {
 		t.Errorf("staging merged into production must be found, got %+v", findings)
 	}
 }
@@ -213,14 +224,14 @@ func TestWorkflowStagingMergedBackIsFound(t *testing.T) {
 func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
-	epoch := gitTest(t, dir, "rev-parse", "HEAD")
+	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 	gitTest(t, dir, "checkout", "-q", "-b", "staging")
 	workflowFileWrite(t, dir, "picked.txt", "hand-authored, no provenance\n")
 	gitTest(t, dir, "add", ".")
 	gitTest(t, dir, "commit", "-q", "-m", "no provenance here")
 	gitTest(t, dir, "checkout", "-q", "main")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-32")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "cherry-pick") {
 		t.Fatalf("staging commits without recorded provenance must be found, got %+v", findings)
 	}
@@ -228,7 +239,7 @@ func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 	gitTest(t, dir, "checkout", "-q", "staging")
 	gitTest(t, dir, "commit", "-q", "--amend", "-m", "no provenance here\n\n(cherry picked from commit 0000000000000000000000000000000000000000)")
 	gitTest(t, dir, "checkout", "-q", "main")
-	findings = workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir, Config: WorkflowConfig{Epoch: epoch}}), "BFD-32")
+	findings = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
 	if len(findings) != 0 {
 		t.Errorf("a recorded cherry-pick is legal staging provenance, got %+v", findings)
 	}
@@ -236,7 +247,7 @@ func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 
 func TestWorkflowPipelineMissingAndSilent(t *testing.T) {
 	dir := workflowRepoNew(t)
-	findings := workflowFindingsRun(t, workflowFindingsInput{Dir: dir})
+	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
 	ci := workflowFindingsByRule(findings, "BFD-33")
 	if len(ci) != 1 || !strings.Contains(ci[0].Message, "no CI configuration") {
 		t.Errorf("a repo with no pipeline must be found, got %+v", ci)
@@ -247,13 +258,13 @@ func TestWorkflowPipelineMissingAndSilent(t *testing.T) {
 	}
 
 	workflowFileWrite(t, dir, ".github/workflows/ci.yml", "steps:\n  - run: echo tests\n")
-	ci = workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir}), "BFD-33")
+	ci = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-33")
 	if len(ci) != 1 || !strings.Contains(ci[0].Message, "bfd conform") {
 		t.Errorf("a pipeline that skips the gate must be found, got %+v", ci)
 	}
 
 	workflowFileWrite(t, dir, ".github/workflows/ci.yml", "steps:\n  - run: bfd conform\n")
-	ci = workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{Dir: dir}), "BFD-33")
+	ci = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-33")
 	if len(ci) != 0 {
 		t.Errorf("a pipeline invoking the gate holds, got %+v", ci)
 	}
@@ -261,10 +272,7 @@ func TestWorkflowPipelineMissingAndSilent(t *testing.T) {
 
 func TestWorkflowProductionBranchMissing(t *testing.T) {
 	dir := workflowRepoNew(t)
-	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowFindingsInput{
-		Dir:    dir,
-		Config: WorkflowConfig{Production: "trunk"},
-	}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{Production: "trunk"}), "BFD-30")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `"trunk"`) {
 		t.Errorf("a configured production branch that does not exist must be found, got %+v", findings)
 	}

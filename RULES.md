@@ -103,7 +103,7 @@ These rules are not a review filter. They are how you design and build everythin
 - **Sync** — the `updatedAfter` mechanism (BFD-7 through BFD-10). The timestamp is the event.
 - **Public API / App API** — the stable, keyed, documented surface vs. the JWT-authed surface that moves with the product (BFD-18).
 - **Production branch** — the branch that is production (`main`). Its first-parent history is the sequence of states production has been in (BFD-30).
-- **Epoch** — the revision where a repository adopted the workflow rules. History before it is not on trial (BFD-30 through BFD-33 judge from the epoch forward).
+- **Release window** — production's first-parent line since the most recent version tag on it. The workflow rules judge the window, not the archaeology: shipping a conforming release is what closes the old books (BFD-30 through BFD-33).
 
 ---
 
