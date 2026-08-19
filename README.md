@@ -23,14 +23,14 @@ Agents follow BFD when the rules are in their context, not because this repo is 
 **Claude Code** — install the plugin once; "follow BFD" then works in every project:
 
 ```
-/plugin marketplace add ddnet-repo/boundary-first-development
+/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
 /plugin install bfd@ddnet
 ```
 
 Or from the terminal, for scripts and machine setup:
 
 ```sh
-claude plugin marketplace add ddnet-repo/boundary-first-development
+claude plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
 claude plugin install bfd@ddnet
 ```
 
@@ -38,8 +38,8 @@ claude plugin install bfd@ddnet
 
 ```json
 { "instructions": [
-  "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md",
-  "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/LINT.md"
+  "https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/RULES.md",
+  "https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/LINT.md"
 ] }
 ```
 
@@ -48,7 +48,7 @@ claude plugin install bfd@ddnet
 **The conformance tool** — agents follow the rules; `bfd conform` proves the wire-level ones, deterministically, against any language's backend (Go 1.24+ to install):
 
 ```sh
-go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest
+go install codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest
 export PATH="$(go env GOPATH)/bin:$PATH"   # go install's target is rarely on PATH already
 bfd conform --base-url http://localhost:8080
 ```

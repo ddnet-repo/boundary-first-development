@@ -12,7 +12,7 @@ This project follows **Boundary-First Development (BFD)**.
 - If a request would violate a rule, name the rule and offer the compliant path. Do not silently comply. Do not silently refuse.
 - The rules outrank the existing code. If the codebase already violates a rule, flag it — don't replicate it.
 - Run the PR checklist at the bottom of RULES.md before declaring any change done.
-- If RULES.md is missing from this project, fetch the canonical copy: <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md>
+- If RULES.md is missing from this project, fetch the canonical copy: <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/RULES.md>
 
 ## Wiring it up
 
@@ -21,7 +21,7 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 **Claude Code** — install the plugin once. Nothing in your repos changes.
 
 ```
-/plugin marketplace add ddnet-repo/boundary-first-development
+/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development
 /plugin install bfd@ddnet
 ```
 
@@ -32,8 +32,8 @@ BFD is a fixed point. It is referenced, never blended into your instruction file
 ```json
 {
   "instructions": [
-    "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/RULES.md",
-    "https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/LINT.md"
+    "https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/RULES.md",
+    "https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/LINT.md"
   ]
 }
 ```
@@ -54,9 +54,9 @@ BFD-17 says linters run on hooks and nothing merges without passing. [LINT.md](L
 
 | Language | Fetch | Save as |
 |---|---|---|
-| Go | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/golangci.yml> | `.golangci.yml` |
-| Python | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/ruff.toml> | `ruff.toml` |
-| TS/JS | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/eslint.config.mjs> | `eslint.config.mjs` |
+| Go | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/golangci.yml> | `.golangci.yml` |
+| Python | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/ruff.toml> | `ruff.toml` |
+| TS/JS | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/eslint.config.mjs> | `eslint.config.mjs` |
 
 Wire the gate into whatever hook tooling the repo has — lefthook, pre-commit, husky, CI. In Claude Code you can also make the boundary unskippable at the harness level: a `Stop` hook in the project's `.claude/settings.json` means the agent cannot end its turn with a broken boundary:
 

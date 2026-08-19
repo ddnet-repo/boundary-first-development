@@ -1,5 +1,5 @@
 # Boundary-First Development — the Go gate (BFD-17).
-# https://github.com/ddnet-repo/boundary-first-development — RULES.md is the law;
+# https://codeberg.org/galaxi/boundary-first-development — RULES.md is the law;
 # this file is that law in golangci-lint's dialect. Copy it next to your go.mod
 # as .golangci.yml. Extend it freely — the five enabled linters below are the
 # floor `bfd conform` checks for, not a ceiling.

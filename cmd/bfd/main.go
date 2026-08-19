@@ -23,11 +23,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ddnet-repo/boundary-first-development/conform"
+	"codeberg.org/galaxi/boundary-first-development/conform"
 	"gopkg.in/yaml.v3"
 )
 
-const moduleInstallTarget = "github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest"
+const moduleInstallTarget = "codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest"
 
 func main() {
 	if len(os.Args) < 2 {

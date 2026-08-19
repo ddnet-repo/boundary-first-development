@@ -5,7 +5,7 @@ description: Enforce Boundary-First Development (BFD) rules during architecture,
 
 # Boundary-First Development
 
-The user follows Boundary-First Development. The rules below are the complete law, vendored verbatim from the canonical [RULES.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/RULES.md). They are not suggestions, and they are active for the entire session.
+The user follows Boundary-First Development. The rules below are the complete law, vendored verbatim from the canonical [RULES.md](https://codeberg.org/galaxi/boundary-first-development/src/branch/main/RULES.md). They are not suggestions, and they are active for the entire session.
 
 These rules are not a review filter. They are how you design and build everything, from the first line, so that review comes back clean.
 
@@ -32,9 +32,9 @@ These rules are not a review filter. They are how you design and build everythin
 The wire-level rules are provable, not just followable. The canonical repo ships `bfd conform`, a language-agnostic CLI that deterministically checks the project's OpenAPI contract (static), its running API (read-only GET probes), and its lint gate (config read, never executed), citing a rule ID on every finding. It proves BFD-2, 3, 7, 8, 11, 12, 13, 17, and 18; the lint gates below carry the source-level rules, and design rules remain yours to enforce by hand.
 
 - Before declaring backend or API work done, run it alongside the PR checklist: `bfd conform` from the repo root (auto-discovers `openapi.yaml`, reads optional `bfd.yaml`), plus `--base-url http://localhost:<port>` when the API is running. Treat findings like review findings: fix them, don't report them.
-- If `bfd` is not on PATH, install it (requires Go 1.24+): `go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`. That writes to `$(go env GOPATH)/bin`, which is usually *not* on PATH — if the command is still not found, invoke it by full path and tell the user to add `export PATH="$(go env GOPATH)/bin:$PATH"` to their shell profile. Never report the install as done while the command cannot be run. In a Go project, prefer pinning it as a tool dependency: `go get -tool github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest`, then `go tool bfd conform`. If the Go toolchain is unavailable, say so and fall back to checking the same rules by hand.
+- If `bfd` is not on PATH, install it (requires Go 1.24+): `go install codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest`. That writes to `$(go env GOPATH)/bin`, which is usually *not* on PATH — if the command is still not found, invoke it by full path and tell the user to add `export PATH="$(go env GOPATH)/bin:$PATH"` to their shell profile. Never report the install as done while the command cannot be run. In a Go project, prefer pinning it as a tool dependency: `go get -tool codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest`, then `go tool bfd conform`. If the Go toolchain is unavailable, say so and fall back to checking the same rules by hand.
 - Exit 0: the boundary holds. Exit 1: findings. Exit 2: the tool could not run (`--json` for the machine-readable envelope).
-- Full usage and the provable-rule table: [CONFORM.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/CONFORM.md).
+- Full usage and the provable-rule table: [CONFORM.md](https://codeberg.org/galaxi/boundary-first-development/src/branch/main/CONFORM.md).
 
 ## The lint gates (BFD-17)
 
@@ -42,14 +42,14 @@ A linted language without its lint gate is a BFD-17 violation — `bfd conform` 
 
 | Language | Fetch | Save as |
 |---|---|---|
-| Go | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/golangci.yml> | `.golangci.yml` next to `go.mod` |
-| Python | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/ruff.toml> | `ruff.toml` next to `pyproject.toml` |
-| TS/JS | <https://raw.githubusercontent.com/ddnet-repo/boundary-first-development/main/lint/eslint.config.mjs> | `eslint.config.mjs` at the project root |
+| Go | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/golangci.yml> | `.golangci.yml` next to `go.mod` |
+| Python | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/ruff.toml> | `ruff.toml` next to `pyproject.toml` |
+| TS/JS | <https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/eslint.config.mjs> | `eslint.config.mjs` at the project root |
 
 - Presets are floors, not ceilings: extend them freely, never trim the rule-annotated entries.
 - Run the project's linter before declaring work done — it has the same standing as the test suite. A lint failure is a rule violation with a BFD-n annotation in the config telling you which one.
 - BFD-17 says hooks: when introducing a gate, wire it into whatever hook tooling the project has (lefthook, pre-commit, husky, CI). If none exists, say so and propose one.
-- What the gates deliberately cannot prove (BFD-13 plurals, BFD-28 name ordering, `any` in Go parameters) stays with you. Full table: [LINT.md](https://github.com/ddnet-repo/boundary-first-development/blob/main/LINT.md).
+- What the gates deliberately cannot prove (BFD-13 plurals, BFD-28 name ordering, `any` in Go parameters) stays with you. Full table: [LINT.md](https://codeberg.org/galaxi/boundary-first-development/src/branch/main/LINT.md).
 
 ## The Rules
 

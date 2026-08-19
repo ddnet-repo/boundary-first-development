@@ -1,5 +1,5 @@
 # Boundary-First Development — the Python gate (BFD-17).
-# https://github.com/ddnet-repo/boundary-first-development — RULES.md is the law;
+# https://codeberg.org/galaxi/boundary-first-development — RULES.md is the law;
 # this file is that law in ruff's dialect. Copy it next to your pyproject.toml
 # as ruff.toml, or fold the sections into [tool.ruff.lint]. Extend it freely —
 # this selection is the floor `bfd conform` checks for, not a ceiling.

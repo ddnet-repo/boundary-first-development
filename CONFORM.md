@@ -7,7 +7,7 @@ Rules that live on the wire can be proven, not just reviewed. This repo ships **
 Once, globally (Go 1.24+):
 
 ```sh
-go install github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest
+go install codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest
 ```
 
 `go install` writes to `$(go env GOPATH)/bin`, which is **not on `PATH` by default** on most Linux setups — the install then succeeds and `bfd` is still "command not found". Put it on `PATH` once:
@@ -21,7 +21,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"   # add to ~/.bashrc or ~/.zshrc
 Or sideloaded as a versioned dependency of a Go project, pinned in `go.mod` like anything else:
 
 ```sh
-go get -tool github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest
+go get -tool codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest
 go tool bfd conform
 ```
 
@@ -106,7 +106,7 @@ One honest limit: `requires` only works from the release that introduced it onwa
 Wire checks are read-only GETs, so it is safe anywhere, including CI:
 
 ```yaml
-- run: go run github.com/ddnet-repo/boundary-first-development/cmd/bfd@latest conform
+- run: go run codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest conform
 ```
 
 ## What it deliberately does not claim

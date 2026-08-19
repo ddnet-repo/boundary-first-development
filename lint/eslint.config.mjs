@@ -1,5 +1,5 @@
 // Boundary-First Development — the TypeScript/JavaScript gate (BFD-17).
-// https://github.com/ddnet-repo/boundary-first-development — RULES.md is the law;
+// https://codeberg.org/galaxi/boundary-first-development — RULES.md is the law;
 // this file is that law in ESLint's dialect. Copy it to your project root as
 // eslint.config.mjs (needs: npm i -D eslint typescript-eslint). Extend it
 // freely — these rules are the floor, not a ceiling.

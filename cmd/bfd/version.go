@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	versionProxyURL      = "https://proxy.golang.org/github.com/ddnet-repo/boundary-first-development/@latest"
+	versionProxyURL      = "https://proxy.golang.org/codeberg.org/galaxi/boundary-first-development/@latest"
 	versionCheckInterval = 24 * time.Hour
 )
 
