@@ -23,14 +23,14 @@ Agents follow BFD when the rules are in their context, not because this repo is 
 **Claude Code** — install the plugin once; "follow BFD" then works in every project:
 
 ```
-/plugin marketplace add https://codeberg.org/galaxi/boundary-first-development.git
+/plugin marketplace add https://codeberg.org/galaxi/marketplace.git
 /plugin install bfd@galaxi
 ```
 
 Or from the terminal, for scripts and machine setup:
 
 ```sh
-claude plugin marketplace add https://codeberg.org/galaxi/boundary-first-development.git
+claude plugin marketplace add https://codeberg.org/galaxi/marketplace.git
 claude plugin install bfd@galaxi
 ```
 
