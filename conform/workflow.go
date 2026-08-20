@@ -36,6 +36,7 @@ type WorkflowConfig struct {
 type workflowCheckInput struct {
 	RootDir string
 	Config  WorkflowConfig
+	Gated   bool // something exists to gate: a linted language or a spec
 	Report  func(finding Finding)
 	Note    func(text string)
 }
@@ -79,8 +80,13 @@ func workflowCheckAll(input workflowCheckInput) workflowCheckResult {
 		RootDir: input.RootDir, Graph: graph, Production: production,
 		Patterns: workflowStagingPatterns(input.Config.Staging), Report: input.Report,
 	})
-	workflowCheckPipeline(workflowPipelineCheckInput{RootDir: input.RootDir, Report: input.Report})
-	workflowCheckHooks(workflowHooksCheckInput{RootDir: input.RootDir, Report: input.Report})
+	if input.Gated {
+		// The pipeline and hooks are owed where something exists to gate — a
+		// linted language, a contract. A repository of prose owes no pipeline,
+		// and a runner is deployment infrastructure, never evidence.
+		workflowCheckPipeline(workflowPipelineCheckInput{RootDir: input.RootDir, Report: input.Report})
+		workflowCheckHooks(workflowHooksCheckInput{RootDir: input.RootDir, Report: input.Report})
+	}
 	return workflowCheckResult{Production: production}
 }
 

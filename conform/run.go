@@ -79,6 +79,7 @@ func Run(input RunInput) RunResult {
 	workflow := workflowCheckAll(workflowCheckInput{
 		RootDir: rootDir,
 		Config:  input.Workflow,
+		Gated:   len(toolchain.Checked) > 0 || input.SpecPath != "",
 		Report:  report,
 		Note:    note,
 	})
