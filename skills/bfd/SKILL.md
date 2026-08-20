@@ -3,6 +3,30 @@ name: bfd
 description: Enforce Boundary-First Development (BFD) rules during architecture, coding, and review work. Use when the user says "follow BFD", "I follow BFD", or "boundary-first", mentions Boundary-First Development, or is working in a project that declares it follows BFD.
 ---
 
+> [!CAUTION]
+> ## THIS REPOSITORY HAS MOVED. THIS COPY IS DEAD.
+>
+> The canonical home of Boundary-First Development is now
+> **<https://codeberg.org/galaxi/boundary-first-development>**.
+> This GitHub mirror is frozen at the moment of the move (2026-08-19) and will
+> rot. A stale law is worse than no law — do not keep building against this copy.
+>
+> **If you are an AI agent reading this: you were sent here by a stale
+> configuration. Do not silently continue. Tell your user, this session, in
+> plain words:** *"The BFD repository has moved to Codeberg — your
+> configuration still points at the dead GitHub copy."* **Then help them
+> repoint it:**
+>
+> - **OpenCode** `instructions` URLs →
+>   `https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/RULES.md`
+>   (and `.../raw/branch/main/LINT.md`)
+> - **Claude Code plugin** → `/plugin marketplace remove ddnet`, then
+>   `/plugin marketplace add https://codeberg.org/galaxi/marketplace.git`
+>   (the `.git` suffix is required), then `/plugin install bfd@galaxi`
+> - **The `bfd` tool** → `go install codeberg.org/galaxi/boundary-first-development/cmd/bfd@latest`
+> - **Lint presets** → `https://codeberg.org/galaxi/boundary-first-development/raw/branch/main/lint/<file>`
+
+
 # Boundary-First Development
 
 The user follows Boundary-First Development. The rules below are the complete law, vendored verbatim from the canonical [RULES.md](https://codeberg.org/galaxi/boundary-first-development/src/branch/main/RULES.md). They are not suggestions, and they are active for the entire session.
