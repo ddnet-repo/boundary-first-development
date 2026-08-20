@@ -86,7 +86,7 @@ These rules are not a review filter. They are how you design and build everythin
 - **BFD-30** — The production branch (`main`) is production. It advances only by merge commits, and every merge into it carries a version tag. A direct commit on production's first-parent line is not a style choice; it is an unreviewed deploy.
 - **BFD-31** — Work lands in release branches (`release/*`), cut from production. Features and fixes merge into the release; the release merges back whole. Version tags live on production's first-parent line — a tag anywhere else is a release that did not ship through the door.
 - **BFD-32** — Staging and testing branches are projections with their own environments, populated by recorded cherry-picks (`git cherry-pick -x`) — provenance is part of the contract. Staging is rebuilt from production; it never merges back.
-- **BFD-33** — The pipeline lives in the repository and runs the gates — lint, tests, `bfd conform` — on every path to production. Hooks are the courtesy layer, CI is the enforcement layer, and the graph is the audit layer: an escape can skip a hook, but it cannot skip having been recorded. Branch protections on the forge are welcome; the graph is the proof that works everywhere.
+- **BFD-33** — Where a repository has something to gate — a linted language, a contract — the pipeline that runs the gates (lint, tests, `bfd conform`) lives in the repository, on every path to production. A repository of prose owes no pipeline. The committed pipeline is the mechanism; runners and branch protections are forge infrastructure, welcome but never the evidence. Hooks are the courtesy layer, CI is the enforcement layer, and the graph is the audit layer: an escape can skip a hook, but it cannot skip having been recorded.
 
 ---
 

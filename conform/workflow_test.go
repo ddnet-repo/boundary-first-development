@@ -80,12 +80,19 @@ func workflowReleaseShip(t *testing.T, input workflowReleaseShipInput) {
 	gitTest(t, input.Dir, "tag", input.Tag)
 }
 
-func workflowFindingsRun(t *testing.T, dir string, config WorkflowConfig) []Finding {
+type workflowRunTestInput struct {
+	Dir    string
+	Config WorkflowConfig
+	Gated  bool
+}
+
+func workflowFindingsRun(t *testing.T, input workflowRunTestInput) []Finding {
 	t.Helper()
 	findings := []Finding{}
 	workflowCheckAll(workflowCheckInput{
-		RootDir: dir,
-		Config:  config,
+		RootDir: input.Dir,
+		Config:  input.Config,
+		Gated:   input.Gated,
 		Report:  func(finding Finding) { findings = append(findings, finding) },
 		Note:    func(string) {},
 	})
@@ -122,7 +129,7 @@ func TestWorkflowCleanReleaseFlowHolds(t *testing.T) {
 	workflowGatesPlant(t, dir)
 	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 
-	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
+	findings := workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true})
 	if len(findings) != 0 {
 		t.Errorf("a clean release flow must hold, got %+v", findings)
 	}
@@ -136,7 +143,7 @@ func TestWorkflowShippingAReleaseClosesTheBooks(t *testing.T) {
 	workflowGatesPlant(t, dir)
 	workflowReleaseShip(t, workflowReleaseShipInput{Dir: dir, Branch: "release/v1", File: "feature.txt", Tag: "v1.0.0"})
 
-	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
+	findings := workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true})
 	if len(findings) != 0 {
 		t.Errorf("the window is judged, not the archaeology — shipping a release closes the books, got %+v", findings)
 	}
@@ -150,7 +157,7 @@ func TestWorkflowDirectCommitSinceTheLastRelease(t *testing.T) {
 	gitTest(t, dir, "add", ".")
 	gitTest(t, dir, "commit", "-q", "-m", "pushed straight to prod")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-30")
 	if len(findings) != 1 {
 		t.Fatalf("expected one aggregated BFD-30 finding, got %+v", findings)
 	}
@@ -163,7 +170,7 @@ func TestWorkflowNoReleaseHasEverShipped(t *testing.T) {
 	dir := workflowRepoNew(t)
 	workflowGatesPlant(t, dir)
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-30")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "no release has ever shipped") {
 		t.Errorf("a repository with no tagged release must be told so, got %+v", findings)
 	}
@@ -180,7 +187,7 @@ func TestWorkflowUntaggedMergeIsFound(t *testing.T) {
 	gitTest(t, dir, "checkout", "-q", "main")
 	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge release/v2", "release/v2")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-30")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "carry no version tag") {
 		t.Errorf("an untagged merge into production must be found, got %+v", findings)
 	}
@@ -197,7 +204,7 @@ func TestWorkflowCurrentReleaseOffTheLineIsFound(t *testing.T) {
 	gitTest(t, dir, "tag", "v9.9.9") // the current release, tagged off production's line
 	gitTest(t, dir, "checkout", "-q", "main")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-31")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-31")
 	if len(findings) != 1 || !strings.Contains(findings[0].Where, "v9.9.9") {
 		t.Errorf("the current release tag off production's line must be found, got %+v", findings)
 	}
@@ -215,7 +222,7 @@ func TestWorkflowStagingMergedBackIsFound(t *testing.T) {
 	gitTest(t, dir, "merge", "-q", "--no-ff", "-m", "Merge staging", "staging")
 	gitTest(t, dir, "tag", "v1.1.0") // tagged, so only the staging rule trips
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-32")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "merged into main") {
 		t.Errorf("staging merged into production must be found, got %+v", findings)
 	}
@@ -231,7 +238,7 @@ func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 	gitTest(t, dir, "commit", "-q", "-m", "no provenance here")
 	gitTest(t, dir, "checkout", "-q", "main")
 
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-32")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "cherry-pick") {
 		t.Fatalf("staging commits without recorded provenance must be found, got %+v", findings)
 	}
@@ -239,7 +246,7 @@ func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 	gitTest(t, dir, "checkout", "-q", "staging")
 	gitTest(t, dir, "commit", "-q", "--amend", "-m", "no provenance here\n\n(cherry picked from commit 0000000000000000000000000000000000000000)")
 	gitTest(t, dir, "checkout", "-q", "main")
-	findings = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-32")
+	findings = workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-32")
 	if len(findings) != 0 {
 		t.Errorf("a recorded cherry-pick is legal staging provenance, got %+v", findings)
 	}
@@ -247,7 +254,7 @@ func TestWorkflowStagingCherryPickProvenance(t *testing.T) {
 
 func TestWorkflowPipelineMissingAndSilent(t *testing.T) {
 	dir := workflowRepoNew(t)
-	findings := workflowFindingsRun(t, dir, WorkflowConfig{})
+	findings := workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true})
 	ci := workflowFindingsByRule(findings, "BFD-33")
 	if len(ci) != 1 || !strings.Contains(ci[0].Message, "no CI configuration") {
 		t.Errorf("a repo with no pipeline must be found, got %+v", ci)
@@ -258,21 +265,35 @@ func TestWorkflowPipelineMissingAndSilent(t *testing.T) {
 	}
 
 	workflowFileWrite(t, dir, ".github/workflows/ci.yml", "steps:\n  - run: echo tests\n")
-	ci = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-33")
+	ci = workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-33")
 	if len(ci) != 1 || !strings.Contains(ci[0].Message, "bfd conform") {
 		t.Errorf("a pipeline that skips the gate must be found, got %+v", ci)
 	}
 
 	workflowFileWrite(t, dir, ".github/workflows/ci.yml", "steps:\n  - run: bfd conform\n")
-	ci = workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{}), "BFD-33")
+	ci = workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: true}), "BFD-33")
 	if len(ci) != 0 {
 		t.Errorf("a pipeline invoking the gate holds, got %+v", ci)
 	}
 }
 
+func TestWorkflowProseRepositoryOwesNoPipeline(t *testing.T) {
+	dir := workflowRepoNew(t)
+	workflowFileWrite(t, dir, "notes.md", "prose\n")
+	gitTest(t, dir, "add", ".")
+	gitTest(t, dir, "commit", "-q", "-m", "more prose, straight to main")
+	findings := workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Gated: false})
+	if len(workflowFindingsByRule(findings, "BFD-33")) != 0 || len(workflowFindingsByRule(findings, "BFD-17")) != 0 {
+		t.Errorf("a repository with nothing to gate owes no pipeline and no hooks, got %+v", findings)
+	}
+	if len(workflowFindingsByRule(findings, "BFD-30")) != 1 {
+		t.Errorf("the graph rules still apply to everything versioned, got %+v", findings)
+	}
+}
+
 func TestWorkflowProductionBranchMissing(t *testing.T) {
 	dir := workflowRepoNew(t)
-	findings := workflowFindingsByRule(workflowFindingsRun(t, dir, WorkflowConfig{Production: "trunk"}), "BFD-30")
+	findings := workflowFindingsByRule(workflowFindingsRun(t, workflowRunTestInput{Dir: dir, Config: WorkflowConfig{Production: "trunk"}, Gated: true}), "BFD-30")
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `"trunk"`) {
 		t.Errorf("a configured production branch that does not exist must be found, got %+v", findings)
 	}
